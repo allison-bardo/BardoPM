@@ -1,188 +1,145 @@
-// Main dashboard script with inline editing, Monday-based weeks, resourcing grid, history support
-const categories = ["Materials","Fabrication","Durability","ScaleUp","Operations"];
-const people = ["Allison","Christian","Cyril","Mike","Ryszard","SamL","SamW"];
+const categories = ["Materials", "Fabrication", "Durability", "ScaleUp", "Operations"];
+let milestonesData = { Q4: {}, Q1: {} };
+let weeklyPlans = { Q4: {}, Q1: {} };
+let dailyLogs = { Q4: {}, Q1: {} };
 
-const STORAGE_KEYS = {
-  MILESTONES: 'milestonesData_v1',
-  WEEKLY: 'weeklyPlans_v1',
-  DAILY: 'dailyLogs_v1',
-  RESOURCING: 'resourcing_v1'
-};
-
-// Helpers
-function saveToStorage(key,val){ localStorage.setItem(key, JSON.stringify(val)); }
-function loadFromStorage(key, fallback){ const d = localStorage.getItem(key); return d?JSON.parse(d):fallback; }
-
-function getCurrentQuarter(){ return document.getElementById('quarter-select').value; }
-
-// Monday of week helper (ISO yyyy-mm-dd)
-function getMonday(date = new Date()){
-  const d = new Date(date);
-  const day = d.getDay(); // 0 Sun - 6 Sat
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  d.setDate(diff);
-  return d.toISOString().slice(0,10);
+function getCurrentQuarter() {
+  return document.getElementById("quarter-select").value;
 }
 
-// Cache-busted CSV loader
-function loadMilestonesCSV(){
-  if (typeof Papa === 'undefined') return;
-  Papa.parse(`milestones.csv?nocache=${Date.now()}`, { download:true, header:true, skipEmptyLines:true,
-    complete(results){
-      const md = { Q4:{}, Q1:{} };
-      categories.forEach(c=>{ md.Q4[c]=[]; md.Q1[c]=[]; });
-      results.data.forEach(row=>{
-        if(!categories.includes(row.category)) return;
-        const m = { id: row.id, title: row.title, date: row.date, people: row.people, progress: parseInt(row.progress)||0 };
-        if(row.quarter === 'Q1') md.Q1[row.category].push(m); else md.Q4[row.category].push(m);
+function saveToStorage(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function loadFromStorage(key, fallback) {
+  const data = localStorage.getItem(key);
+  return data ? JSON.parse(data) : fallback;
+}
+
+// --- Load Milestones from CSV ---
+function loadMilestonesCSV() {
+  Papa.parse("milestones.csv", {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    complete: function(results) {
+      milestonesData = { Q4: {}, Q1: {} };
+      categories.forEach(c => {
+        milestonesData.Q4[c] = [];
+        milestonesData.Q1[c] = [];
       });
-      saveToStorage(STORAGE_KEYS.MILESTONES, md);
+
+      results.data.forEach(row => {
+        const milestone = {
+          id: row.id,
+          title: row.title,
+          date: row.date,
+          people: row.people,
+          progress: parseInt(row.progress) || 0,
+          lead: row.lead || "Allison"
+        };
+        if (!categories.includes(row.category)) return;
+
+        if (row.quarter === "Q1") milestonesData.Q1[row.category].push(milestone);
+        else milestonesData.Q4[row.category].push(milestone);
+      });
+
+      saveToStorage("milestonesData", milestonesData);
       renderQuarterlyOverview(getCurrentQuarter());
     }
   });
 }
 
-// Render milestone boxes
-function renderQuarterlyOverview(quarter){
-  const container = document.getElementById('milestones');
-  container.innerHTML = '';
-  const md = loadFromStorage(STORAGE_KEYS.MILESTONES, {Q4:{},Q1:{}});
-  categories.forEach(cat=>{
-    const box = document.createElement('div'); box.className='milestone-box'; box.id = `${cat.toLowerCase()}-box`;
-    box.innerHTML = `<h3>${cat}</h3><div class="lead">Lead: ${cat === 'Materials' ? 'Allison' : (cat==='Fabrication'?'Christian':(cat==='Durability'?'Cyril':(cat==='ScaleUp'?'Ryszard':'SamW')))}</div><div class="milestone-entries"></div>`;
-    const entries = box.querySelector('.milestone-entries');
-    const items = md[quarter]?.[cat]||[];
-    items.forEach(m=>{
-      const div = document.createElement('div'); div.className='milestone-entry';
-      div.innerHTML = `<strong>${m.title}</strong><div class="muted small">Personnel: ${m.people||'—'} • ${m.date||'—'}</div>
-        Progress: <input type="number" min="0" max="100" value="${m.progress}" data-id="${m.id}" data-quarter="${quarter}" class="progress-input"> %`;
-      entries.appendChild(div);
+// --- Render Milestones ---
+function renderQuarterlyOverview(quarter) {
+  categories.forEach(category => {
+    const box = document.querySelector(`#${category.toLowerCase()}-box .milestone-entries`);
+    if (!box) return;
+    box.innerHTML = "";
+    const items = milestonesData[quarter]?.[category] || [];
+    items.forEach(m => {
+      const entry = document.createElement("div");
+      entry.className = "milestone-entry";
+      entry.innerHTML = `
+        <strong>${m.title}</strong><br>
+        <em>Lead: ${m.lead}</em><br>
+        Date: ${m.date || "—"}<br>
+        Personnel: ${m.people || "—"}<br>
+        Progress: <input type="number" min="0" max="100" value="${m.progress}" 
+          data-id="${m.id}" data-quarter="${quarter}" class="progress-input"> %
+      `;
+      box.appendChild(entry);
     });
+  });
+}
+
+// --- Weekly Tasks ---
+weeklyPlans = loadFromStorage("weeklyPlans", { Q4: {}, Q1: {} });
+function loadWeeklyTasks(quarter, week = "Week 1") {
+  categories.forEach(category => {
+    const list = document.querySelector(`#weekly-${category.toLowerCase()} .weekly-entries`);
+    if (!list) return;
+    list.innerHTML = "";
+    const tasks = weeklyPlans[quarter]?.[week]?.[category] || [];
+    tasks.forEach(task => {
+      const li = document.createElement("li");
+      li.textContent = task;
+      list.appendChild(li);
+    });
+  });
+}
+
+// --- Daily Updates ---
+dailyLogs = loadFromStorage("dailyLogs", { Q4: {}, Q1: {} });
+
+function renderDailyUpdateInputs() {
+  const container = document.getElementById("daily-person-boxes");
+  if (!container) return;
+  container.innerHTML = "";
+  const people = ["Allison", "Christian", "Cyril", "Mike", "Ryszard", "SamL", "SamW"];
+  
+  people.forEach(name => {
+    const box = document.createElement("div");
+    box.className = "person-box";
+    box.innerHTML = `
+      <h4>${name}</h4>
+      <textarea placeholder="Yesterday update..." data-name="${name}" class="yesterday-update"></textarea>
+      <textarea placeholder="Today update..." data-name="${name}" class="today-update"></textarea>
+    `;
     container.appendChild(box);
   });
-  // render the quarterly resourcing grid after boxes
-  renderQuarterlyResourcing(quarter);
 }
 
-// Quarterly resourcing grid
-
-// Palette mapping for categories -> CSS variable (used when creating inline styles)
-const paletteColors = {
-  Materials: 'var(--accent-1)',
-  Fabrication: 'var(--accent-2)',
-  Durability: 'var(--accent-3)',
-  ScaleUp: 'var(--accent-4)',
-  Operations: 'var(--accent-5)'
-};
-
-// Render quarterly resourcing as colored bars with inside labels
-function renderQuarterlyResourcing(quarter){
-  const container = document.getElementById('resourcing-grid');
-  if(!container) return;
-  const all = loadFromStorage(STORAGE_KEYS.RESOURCING, {});
-  const data = all[quarter] || {};
-  // build table header
-  let html = '<table class="resourcing-table"><thead><tr><th>Person</th>' + categories.map(c=>`<th>${c}</th>`).join('') + '</tr></thead><tbody>';
-  people.forEach(p=>{
-    html += `<tr><td style="text-align:left;padding-left:10px">${p}</td>`;
-    categories.forEach(c=>{
-      const v = (data[c] && data[c][p] !== undefined) ? Number(data[c][p]) : 0;
-      const safeV = Math.max(0, Math.min(100, Number(v) || 0));
-      // add shorthand class for category for fallback coloring
-      const catClass = c==='Materials'?'mat':(c==='Fabrication'?'fab':(c==='Durability'?'dur':(c==='ScaleUp'?'scl':'opr')));
-      html += `<td class="res-cell" data-person="${p}" data-category="${c}" style="vertical-align:middle">
-                 <div class="res-bar ${safeV===0?'zero':''} ${catClass}" role="button" aria-label="${p} ${c} ${safeV} percent"
-                      style="width:${safeV}%;background:${paletteColors[c]};">
-                   <span class="res-label">${safeV}%</span>
-                 </div>
-               </td>`;
-    });
-    html += '</tr>';
-  });
-  html += '</tbody></table>';
-  container.innerHTML = html;
-}
-
-// Open a popup editor positioned below the clicked cell
-function openResEditPopupForCell(cell){
-  closeResEditPopup();
-  const person = cell.dataset.person;
-  const category = cell.dataset.category;
+// --- Event Listeners ---
+document.getElementById("quarter-select").addEventListener("change", () => {
   const quarter = getCurrentQuarter();
-  const all = loadFromStorage(STORAGE_KEYS.RESOURCING, {});
-  const current = (all[quarter] && all[quarter][category] && all[quarter][category][person] !== undefined) ? Number(all[quarter][category][person]) : 0;
+  renderQuarterlyOverview(quarter);
+  renderDailyUpdateInputs();
+  loadWeeklyTasks(quarter);
+});
 
-  const popup = document.createElement('div');
-  popup.className = 'res-edit-popup';
-  popup.innerHTML = `
-    <label>${person} — ${category}</label>
-    <input type="number" min="0" max="100" value="${current}" class="popup-input" />
-    <div class="popup-actions">
-      <button class="cancel-res">Cancel</button>
-      <button class="save-res">Save</button>
-    </div>
-  `;
-  document.body.appendChild(popup);
+document.addEventListener("input", e => {
+  if (e.target.classList.contains("progress-input")) {
+    const quarter = e.target.dataset.quarter;
+    const id = e.target.dataset.id;
+    const newValue = parseInt(e.target.value) || 0;
 
-  // position the popup relative to the cell's bar element
-  const bar = cell.querySelector('.res-bar');
-  const rect = bar.getBoundingClientRect();
-  // default left/top
-  let left = rect.left + window.scrollX;
-  let top = rect.bottom + window.scrollY + 6;
-  // if popup would overflow right edge, adjust
-  const popupRectEstimateWidth = 220;
-  if (left + popupRectEstimateWidth > window.scrollX + window.innerWidth) {
-    left = window.scrollX + window.innerWidth - popupRectEstimateWidth - 12;
+    for (const category of categories) {
+      const item = milestonesData[quarter]?.[category]?.find(m => m.id === id);
+      if (item) {
+        item.progress = newValue;
+        saveToStorage("milestonesData", milestonesData);
+        break;
+      }
+    }
   }
-  popup.style.left = left + 'px';
-  popup.style.top = top + 'px';
-
-  // handlers
-  popup.querySelector('.cancel-res').addEventListener('click', ()=>{ closeResEditPopup(); });
-  popup.querySelector('.save-res').addEventListener('click', ()=>{
-    const val = parseInt(popup.querySelector('.popup-input').value) || 0;
-    updateResourcingValue(person, category, Math.max(0, Math.min(100, val)));
-    closeResEditPopup();
-    renderQuarterlyResourcing(getCurrentQuarter());
-  });
-}
-
-// Close any existing popup
-function closeResEditPopup(){
-  const existing = document.querySelector('.res-edit-popup');
-  if(existing) existing.remove();
-}
-
-// Update storage with a single cell change
-function updateResourcingValue(person, category, val){
-  const quarter = getCurrentQuarter();
-  const all = loadFromStorage(STORAGE_KEYS.RESOURCING, {});
-  if(!all[quarter]) all[quarter] = {};
-  if(!all[quarter][category]) all[quarter][category] = {};
-  all[quarter][category][person] = val;
-  saveToStorage(STORAGE_KEYS.RESOURCING, all);
-}
-
-// Delegate click on res-cell to open popup
-document.addEventListener('click', function(e){
-  const cell = e.target.closest('.res-cell');
-  if(!cell) return;
-  // Only open popup when clicking on the bar or cell (not when clicking inside the popup)
-  const insidePopup = e.target.closest('.res-edit-popup');
-  if(insidePopup) return;
-  openResEditPopupForCell(cell);
 });
 
-// Close popup on ESC or click outside popup
-document.addEventListener('keydown', function(e){
-  if(e.key === 'Escape') closeResEditPopup();
-});
-document.addEventListener('click', function(e){
-  const popup = document.querySelector('.res-edit-popup');
-  if(!popup) return;
-  if(e.target.closest('.res-edit-popup')) return; // clicked inside
-  if(e.target.closest('.res-cell')) return; // clicked a cell (handled elsewhere)
-  // otherwise close
-  popup.remove();
+// --- Initialize ---
+document.addEventListener("DOMContentLoaded", () => {
+  milestonesData = loadFromStorage("milestonesData", { Q4: {}, Q1: {} });
+  renderQuarterlyOverview(getCurrentQuarter());
+  renderDailyUpdateInputs();
+  loadWeeklyTasks(getCurrentQuarter());
+  loadMilestonesCSV();
 });
