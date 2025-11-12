@@ -264,23 +264,53 @@ function loadWeeklyTasks(quarter, week = "Week 1") {
 // --- Daily Updates ---
 dailyLogs = loadFromStorage("dailyLogs", { Q4: {}, Q1: {} });
 
-function renderDailyUpdateInputs() {
-  const container = document.getElementById("daily-person-boxes");
+function renderDailyBoxes() {
+  const container = document.getElementById("daily-row");
   if (!container) return;
   container.innerHTML = "";
-  const people = ["Allison", "Christian", "Cyril", "Mike", "Ryszard", "SamL", "SamW"];
-  
+
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  const todayKey = today.toISOString().slice(0, 10);
+  const yesterdayKey = yesterday.toISOString().slice(0, 10);
+
+  if (!dailyLogs[todayKey]) dailyLogs[todayKey] = {};
+
   people.forEach(name => {
+    const yesterdayUpdate =
+      (dailyLogs[yesterdayKey] && dailyLogs[yesterdayKey][name]?.today) || "";
+    const todayUpdate =
+      (dailyLogs[todayKey] && dailyLogs[todayKey][name]?.today) || "";
+
     const box = document.createElement("div");
     box.className = "person-box";
     box.innerHTML = `
-      <h4>${name}</h4>
-      <textarea placeholder="Yesterday update..." data-name="${name}" class="yesterday-update"></textarea>
-      <textarea placeholder="Today update..." data-name="${name}" class="today-update"></textarea>
+      <div class="person-header">
+        <h4>${name}</h4>
+        <div class="muted small">${todayKey}</div>
+      </div>
+      <label>Yesterday's Update</label>
+      <div class="yesterday">${yesterdayUpdate}</div>
+      <label>Today's Update</label>
+      <textarea class="today" data-name="${name}" placeholder="Write today's update...">${todayUpdate}</textarea>
     `;
     container.appendChild(box);
   });
+
+  // Save today's updates live
+  container.querySelectorAll(".today").forEach(el => {
+    el.addEventListener("input", e => {
+      const name = e.target.dataset.name;
+      const val = e.target.value;
+      if (!dailyLogs[todayKey]) dailyLogs[todayKey] = {};
+      if (!dailyLogs[todayKey][name]) dailyLogs[todayKey][name] = {};
+      dailyLogs[todayKey][name].today = val;
+      saveToStorage(STORAGE_KEYS.DAILY, dailyLogs);
+    });
+  });
 }
+
 
 // --- Event Listeners ---
 document.getElementById('quarter-select').addEventListener('change', () => {
@@ -315,9 +345,10 @@ document.addEventListener("DOMContentLoaded", () => {
   renderQuarterlyOverview(getCurrentQuarter());
   renderQuarterlyResourcing(getCurrentQuarter());
   loadWeeklyTasks(getCurrentQuarter());
-  renderDailyUpdateInputs();
+  renderDailyBoxes();
   loadMilestonesCSV();
 });
+
 
 
 
