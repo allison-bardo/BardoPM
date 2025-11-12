@@ -122,7 +122,6 @@ function ensureResourcingForQuarter(quarter) {
   }
 }
 
-// renders the table of bars with inside labels
 function renderQuarterlyResourcing(quarter) {
   const container = document.getElementById('resourcing-grid');
   if (!container) return;
@@ -131,71 +130,129 @@ function renderQuarterlyResourcing(quarter) {
   const all = loadFromStorage(STORAGE_KEYS.RESOURCING, {});
   const data = all[quarter] || {};
 
-  let html = '<table class="resourcing-table"><thead><tr><th>Person</th>' +
-    categories.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+  let html = `<table class="resourcing-table">
+    <thead><tr><th>Person</th><th>Total Allocation</th></tr></thead><tbody>`;
 
   people.forEach(person => {
-    html += `<tr><td style="text-align:left;padding-left:10px">${person}</td>`;
-    categories.forEach(category => {
-      const raw = (data[category] && data[category][person] !== undefined) ? Number(data[category][person]) : 0;
-      const val = Math.max(0, Math.min(100, Math.round(raw)));
-      const catClass = category === 'Materials' ? 'mat' : (category === 'Fabrication' ? 'fab' : (category === 'Durability' ? 'dur' : (category === 'ScaleUp' ? 'scl' : 'opr')));
-      const bg = paletteColors[category] || '';
-      // cell: res-cell with a bar div inside, accessible label, data attrs
-      html += `<td class="res-cell" data-person="${person}" data-category="${category}" style="vertical-align:middle">
-                <div class="res-bar ${val === 0 ? 'zero':''} ${catClass}" role="button" aria-label="${person} ${category} ${val} percent"
-                     style="width:${val}%;background:${bg};">
-                  <span class="res-label">${val}%</span>
-                </div>
-              </td>`;
+    let total = 0;
+    let segments = "";
+
+    categories.forEach((category, i) => {
+      const val = data[category]?.[person] || 0;
+      total += val;
+      const paletteClass = `palette-${i + 1}-bg`;
+      if (val > 0) {
+        segments += `<div class="res-bar-segment ${paletteClass}" 
+                      data-person="${person}" data-category="${category}"
+                      style="width:${val}%;"
+                      title="${category}: ${val}%">${val > 8 ? val + "%" : ""}</div>`;
+      }
     });
-    html += '</tr>';
+
+    total = Math.min(100, total); // cap total visually
+    html += `
+      <tr>
+        <td style="text-align:left;padding-left:10px;font-weight:600">${person}</td>
+        <td>
+          <div class="res-bar-row">${segments || "<div style='width:100%;text-align:center;color:#999'>0%</div>"}</div>
+        </td>
+      </tr>`;
   });
 
-  html += '</tbody></table>';
+  html += "</tbody></table>";
   container.innerHTML = html;
+
+  // keep your popup editing logic functional
+  container.querySelectorAll(".res-bar-segment").forEach(seg => {
+    seg.addEventListener("click", e => openResEditPopupForCell(e.target));
+  });
 }
 
-// popup editor for single cell
+
 function openResEditPopupForCell(cell) {
-  closeResEditPopup(); // remove existing
+  closeResEditPopup(); // remove any existing one
   const person = cell.dataset.person;
-  const category = cell.dataset.category;
   const quarter = getCurrentQuarter();
   ensureResourcingForQuarter(quarter);
-  const all = loadFromStorage(STORAGE_KEYS.RESOURCING, {});
-  const current = (all[quarter] && all[quarter][category] && all[quarter][category][person] !== undefined) ? Number(all[quarter][category][person]) : 0;
 
-  const popup = document.createElement('div');
-  popup.className = 'res-edit-popup';
-  popup.innerHTML = `
-    <label style="margin-bottom:6px;font-weight:700">${person} — ${category}</label>
-    <input type="number" class="popup-input" min="0" max="100" value="${current}" />
-    <div class="popup-actions" style="margin-top:6px;display:flex;gap:8px;justify-content:flex-end">
+  const all = loadFromStorage(STORAGE_KEYS.RESOURCING, {});
+  const data = all[quarter] || {};
+  const currentAllocations = {};
+
+  categories.forEach(cat => {
+    currentAllocations[cat] = data[cat]?.[person] || 0;
+  });
+
+  const popup = document.createElement("div");
+  popup.className = "res-edit-popup";
+
+  // Popup title
+  let html = `<h4 style="margin:0 0 8px 0;">Edit Resourcing — ${person}</h4>`;
+
+  // One input row per category
+  categories.forEach((cat, i) => {
+    const paletteClass = `palette-${i + 1}-bg`;
+    html += `
+      <div class="res-popup-row" style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <div style="width:90px;font-weight:600;">${cat}</div>
+        <input type="range" min="0" max="100" value="${currentAllocations[cat]}" 
+               data-cat="${cat}" class="popup-slider ${paletteClass}" style="flex:1;">
+        <span class="popup-val" style="width:40px;text-align:right;">${currentAllocations[cat]}%</span>
+      </div>`;
+  });
+
+  html += `
+    <div class="popup-actions" style="margin-top:8px;text-align:right;">
       <button class="cancel-res">Cancel</button>
       <button class="save-res">Save</button>
-    </div>
-  `;
+    </div>`;
+
+  popup.innerHTML = html;
   document.body.appendChild(popup);
 
-  // position popup under the clicked bar, adjusted for viewport
-  const bar = cell.querySelector('.res-bar');
-  const rect = bar.getBoundingClientRect();
-  const popupWidth = 220;
+  // Position popup below clicked element
+  const rect = cell.getBoundingClientRect();
+  const popupWidth = 320;
   let left = rect.left + window.scrollX;
-  if (left + popupWidth > window.scrollX + window.innerWidth) left = window.scrollX + window.innerWidth - popupWidth - 12;
+  if (left + popupWidth > window.scrollX + window.innerWidth)
+    left = window.scrollX + window.innerWidth - popupWidth - 12;
   let top = rect.bottom + window.scrollY + 6;
   popup.style.left = `${left}px`;
   popup.style.top = `${top}px`;
+  popup.style.width = popupWidth + "px";
 
-  popup.querySelector('.cancel-res').addEventListener('click', closeResEditPopup);
-  popup.querySelector('.save-res').addEventListener('click', () => {
-    const val = parseInt(popup.querySelector('.popup-input').value) || 0;
-    updateResourcingValue(person, category, Math.max(0, Math.min(100, val)));
+  // Slider listeners to show % values live
+  popup.querySelectorAll(".popup-slider").forEach(slider => {
+    slider.addEventListener("input", e => {
+      e.target.closest(".res-popup-row").querySelector(".popup-val").textContent =
+        e.target.value + "%";
+    });
+  });
+
+  // Cancel button
+  popup.querySelector(".cancel-res").addEventListener("click", closeResEditPopup);
+
+  // Save button
+  popup.querySelector(".save-res").addEventListener("click", () => {
+    const updated = {};
+    popup.querySelectorAll(".popup-slider").forEach(slider => {
+      updated[slider.dataset.cat] = parseInt(slider.value) || 0;
+    });
+
+    const quarter = getCurrentQuarter();
+    const all = loadFromStorage(STORAGE_KEYS.RESOURCING, {});
+    if (!all[quarter]) all[quarter] = {};
+    categories.forEach(cat => {
+      if (!all[quarter][cat]) all[quarter][cat] = {};
+      all[quarter][cat][person] = updated[cat];
+    });
+
+    saveToStorage(STORAGE_KEYS.RESOURCING, all);
     closeResEditPopup();
-    renderQuarterlyResourcing(getCurrentQuarter());
+    renderQuarterlyResourcing(quarter);
   });
 }
+
 
 // remove popup
 function closeResEditPopup() {
@@ -348,6 +405,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderDailyBoxes();
   loadMilestonesCSV();
 });
+
 
 
 
