@@ -8,6 +8,12 @@ const people = [
   "SamL",
   "SamW"
 ];
+const STORAGE_KEYS = {
+  MILESTONES: "milestonesData",
+  WEEKLY: "weeklyPlans",
+  DAILY: "dailyLogs",
+  RESOURCING: "resourcingData_v1"
+};
 let milestonesData = { Q4: {}, Q1: {} };
 let weeklyPlans = { Q4: {}, Q1: {} };
 let dailyLogs = { Q4: {}, Q1: {} };
@@ -309,8 +315,9 @@ document.addEventListener("DOMContentLoaded", () => {
   renderQuarterlyOverview(getCurrentQuarter());
   renderQuarterlyResourcing(getCurrentQuarter());
   loadWeeklyTasks(getCurrentQuarter());
-  renderDailyBoxes();  // ✅ must be here
+  renderDailyUpdateInputs();
   loadMilestonesCSV();
 });
+
 
 
