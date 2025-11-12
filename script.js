@@ -159,7 +159,26 @@ function renderQuarterlyResourcing(quarter) {
       </tr>`;
   });
 
-  html += "</tbody></table>";
+  total = Math.min(100, total); // cap total visually
+html += `
+  <tr>
+    <td style="text-align:left;padding-left:10px;font-weight:600">${person}</td>
+    <td>
+      <div class="res-bar-row" data-person="${person}">
+        ${
+          segments ||
+          // 👇 This line replaces the static 0% text with a clickable empty bar
+          `<div class="res-bar-segment empty-segment" 
+                data-person="${person}" 
+                data-category="Materials" 
+                style="width:100%;background:rgba(0,0,0,0.05);color:#777;cursor:pointer;">
+                Set Resourcing
+            </div>`
+        }
+      </div>
+    </td>
+  </tr>`;
+
   container.innerHTML = html;
 
   // keep your popup editing logic functional
@@ -418,6 +437,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderDailyBoxes();
   loadMilestonesCSV();
 });
+
 
 
 
