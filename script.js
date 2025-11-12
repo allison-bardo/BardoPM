@@ -277,11 +277,11 @@ function renderDailyUpdateInputs() {
 }
 
 // --- Event Listeners ---
-document.getElementById("quarter-select").addEventListener("change", () => {
-  const quarter = getCurrentQuarter();
-  renderQuarterlyOverview(quarter);
-  renderDailyUpdateInputs();
-  loadWeeklyTasks(quarter);
+document.getElementById('quarter-select').addEventListener('change', () => {
+  const q = getCurrentQuarter();
+  renderQuarterlyOverview(q);
+  renderQuarterlyResourcing(q);
+  loadWeeklyTasks(q);
 });
 
 document.addEventListener("input", e => {
@@ -312,4 +312,5 @@ document.addEventListener("DOMContentLoaded", () => {
   renderDailyBoxes();  // ✅ must be here
   loadMilestonesCSV();
 });
+
 
