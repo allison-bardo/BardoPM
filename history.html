@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset='utf-8' />
+  <meta name='viewport' content='width=device-width,initial-scale=1' />
+  <title>Dashboard History</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <h1>Dashboard History</h1>
+    <nav class="top-nav"><a href="index.html" class="nav-link">⬅ Back to Dashboard</a></nav>
+  </header>
+  <main class="container">
+    <section class="card small">
+      <label for="history-quarter">Quarter</label>
+      <select id="history-quarter"></select>
+      <label for="history-week">Week (Monday)</label>
+      <select id="history-week"></select>
+    </section>
+
+    <section class="card">
+      <h2>Weekly Tasks</h2>
+      <div id="history-weekly"></div>
+    </section>
+
+    <section class="card">
+      <h2>Daily Updates</h2>
+      <div id="history-daily"></div>
+    </section>
+  </main>
+  <script src="history.js"></script>
+</body>
+</html>

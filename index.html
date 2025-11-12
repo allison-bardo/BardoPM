@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Bardo PM Dashboard</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -10,6 +10,7 @@
 <body>
   <header class="site-header">
     <h1>Bardo PM Dashboard</h1>
+    <nav class="top-nav"><a href="history.html" class="nav-link">📊 View History</a></nav>
   </header>
 
   <main class="container">
@@ -21,37 +22,12 @@
       </select>
     </section>
 
-    <section id="milestones" class="milestone-grid">
-      <div class="milestone-box" id="materials-box">
-        <h3>Materials</h3>
-        <div class="lead">Lead: Allison</div>
-        <div class="milestone-entries"></div>
-        <div class="resourcing-setup" data-category="Materials"></div>
-      </div>
-      <div class="milestone-box" id="fabrication-box">
-        <h3>Fabrication</h3>
-        <div class="lead">Lead: Christian</div>
-        <div class="milestone-entries"></div>
-        <div class="resourcing-setup" data-category="Fabrication"></div>
-      </div>
-      <div class="milestone-box" id="durability-box">
-        <h3>Durability</h3>
-        <div class="lead">Lead: Cyril</div>
-        <div class="milestone-entries"></div>
-        <div class="resourcing-setup" data-category="Durability"></div>
-      </div>
-      <div class="milestone-box" id="scaleup-box">
-        <h3>ScaleUp</h3>
-        <div class="lead">Lead: Ryszard</div>
-        <div class="milestone-entries"></div>
-        <div class="resourcing-setup" data-category="ScaleUp"></div>
-      </div>
-      <div class="milestone-box" id="operations-box">
-        <h3>Operations</h3>
-        <div class="lead">Lead: SamL</div>
-        <div class="milestone-entries"></div>
-        <div class="resourcing-setup" data-category="Operations"></div>
-      </div>
+    <section id="milestones" class="milestone-grid"></section>
+
+    <section id="quarterly-resourcing" class="card">
+      <h2>Quarterly Resourcing</h2>
+      <div id="resourcing-grid"></div>
+      <button id="save-all-resourcing" class="save-resourcing-btn">Save All Resourcing</button>
     </section>
 
     <section id="weekly-tasks" class="card">

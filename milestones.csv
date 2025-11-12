@@ -1,21 +1,22 @@
 quarter,category,id,title,lead,date,people,progress
-Q1,Materials,mat1,Receive cast SPEEK roll,Allison,Q4–Q1,—,0
-Q1,Materials,mat2,Consistent SPEEK for electrospinning,Allison,—,—,60
-Q4,Materials,mat3,Identify leading AEM candidates,Allison,—,SamW,0
-Q1,Materials,mat4,Spinability of Flux/AEM,Allison,—,Allison SamW Ryszard,0
-Q4,Fabrication,fab1,Spin 5 webs with consistent voltage,Allison,Oct 1 – Nov 30,Ryszard SamW Allison,0
+Q4,Materials,mat1,Receive cast SPEEK roll,Allison,Q4–Q1,—,0
+Q4,Materials,mat2,Consistent SPEEK for electrospinning,Allison,—,—,0
+Q4,Materials,mat3,Identify leading AEM candidates,Allison,—,—,0
+Q4,Materials,mat4,Spinability of Flux/AEM,Allison,—,—,0
+Q4,Fabrication,fab1,Spin 5 webs with consistent voltage,Allison,Oct 1 – Nov 30,Ryszard, Sam, Allison,0
 Q4,Fabrication,fab2,Make 20×30 cm² junction,Allison,December,Ryszard,0
-Q4,Fabrication,fab3,Send out ≤10×10 cm² samples,Allison,Oct 1 – Nov 30,SamW Allison,0
-Q4,Fabrication,fab4,Redwood samples (<1V @ 100mA/cm²),Allison,Oct,Allison,100
-Q4,Fabrication,fab5,Sample-making training,Allison,Dec (2 weeks),Mike Christian Cyril SamL,0
-Q4,Durability,dur1,Record 100h flow cell data on Bardo BPM,Allison,Oct 1 – Nov 15,Mike Allison Christian,0
+Q4,Fabrication,fab3,Send out ≤10×10 cm² samples,Allison,Oct 1 – Nov 30,Sam, Allison,0
+Q4,Fabrication,fab4,Redwood samples (<1V @ 100mA/cm²),Allison,TBD,Allison,0
+Q4,Fabrication,fab5,Sample-making training,Allison,Dec (2 weeks),Mike, Christian, Cyril, SamL,0
+Q4,Durability,dur1,Record 100h flow cell data on Bardo BPM,Allison,Oct 1 – Nov 15,Mike, Allison, Christian,0
 Q4,Durability,dur2,Retain 80% voltage after 100h,Allison,Nov 15 – Dec 15,TBD,0
-Q1,Durability,dur3,250 mA/cm² at 500h, 60°C,Allison,Dec 1 – Mar 1,Christian Mike,0
-Q1,Durability,dur4,250 mA/cm² at 1,000h, 60°C,Allison,Mar 1 – Sep 1,Christian Mike,0
+Q4,Durability,dur3,250 mA/cm² at 500h, 60°C,Allison,Dec 1 – Mar 1,Christian, Mike,0
+Q4,Durability,dur4,250 mA/cm² at 1,000h, 60°C,Allison,Mar 1 – Sep 1,Christian, Mike,0
 Q4,Durability,dur5,1 A/cm² polarization curve with Bardo BPM,Allison,—,—,0
-Q1,ScaleUp,sc1,Identify R2R lamination vendors,Allison,Q1,Ryszard,0
-Q1,ScaleUp,sc2,Identify QC process,Allison,Q1,Ryszard,0
+Q4,ScaleUp,sc1,Identify R2R lamination vendors,Allison,Q1,Ryszard,0
+Q4,ScaleUp,sc2,Identify QC process,Allison,Q1,Ryszard,0
 Q4,ScaleUp,sc3,Order R2R spinner,Allison,—,Allison,0
+Q4,ScaleUp,sc4,Commission R2R spinner,Allison,Oct 1 – Oct 31,Ryszard,0
 Q4,ScaleUp,sc5,Filtration rig,Allison,Oct 1 – Oct 31,Sam,0
 Q4,Operations,op1,Create weekly data system,Allison,—,—,0
 Q4,Operations,op2,Chinese partner decision,Allison,—,Cyril,0
@@ -23,7 +24,9 @@ Q4,Operations,op3,Ventilation for DMAc/H₂,Allison,—,Allison,0
 Q4,Operations,op4,Safe lab procedures,Allison,—,Allison,0
 Q4,Operations,op5,Lab reorganization,Allison,—,Allison,0
 Q4,Operations,op6,General project management,Allison,—,Allison,0
-Q4,Operations,op7,Birthday party 🎉,Allison,Oct 15,Full Team,100
-
-
-
+Q4,Operations,op7,Birthday party 🎉,Allison,Oct 15,Full Team,0
+Q1,Materials,mat5,New Q1 material milestone,Allison,Jan – Mar,—,0
+Q1,Fabrication,fab6,New Q1 fabrication milestone,Allison,Jan – Feb,SamL,0
+Q1,Durability,dur6,New Q1 durability milestone,Allison,Jan – Mar,Mike,0
+Q1,ScaleUp,sc6,New Q1 scaleup milestone,Allison,Feb – Apr,Ryszard,0
+Q1,Operations,op8,New Q1 operations milestone,Allison,Jan,Allison,0
