@@ -141,3 +141,62 @@ body{
 
 .site-footer{text-align:center;color:var(--muted);padding:6px}
 @media (max-width:720px){ .milestone-grid{flex-direction:column}}
+
+/* Quarterly resourcing bars with inside labels */
+.resourcing-table td { position: relative; padding: 8px; min-width: 120px; }
+.res-cell { display:flex; flex-direction:column; gap:6px; align-items:center; }
+.res-bar {
+  width: 0%;
+  height: 22px;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+  transition: width 0.35s ease;
+  background: rgba(0,0,0,0.06);
+  min-width: 80px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.res-bar .res-label {
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight:700;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+  pointer-events: none;
+}
+/* Palette mapping via classes for fallback */
+.res-bar.mat { background: var(--accent-1); }
+.res-bar.fab { background: var(--accent-2); }
+.res-bar.dur { background: var(--accent-3); }
+.res-bar.scl { background: var(--accent-4); }
+.res-bar.opr { background: var(--accent-5); }
+
+/* Small gray empty bar when value is 0 */
+.res-bar.zero { background: linear-gradient(90deg, rgba(0,0,0,0.03), rgba(0,0,0,0.02)); color:#111; }
+
+/* Popup editor */
+.res-edit-popup {
+  position: absolute;
+  min-width: 180px;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 8px 24px rgba(16,24,40,0.12);
+  z-index: 9999;
+  font-size: 0.95rem;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.res-edit-popup label { font-weight:600; color: #111; }
+.res-edit-popup input[type='number']{ width:100%; padding:6px; border-radius:6px; border:1px solid rgba(0,0,0,0.08); }
+.res-edit-popup .popup-actions{ display:flex; gap:8px; justify-content:flex-end; }
+.res-edit-popup .popup-actions button{ padding:6px 10px; border-radius:6px; border:none; cursor:pointer; font-weight:600; }
+.res-edit-popup .save-res{ background: linear-gradient(90deg,#6EE7B7,#3B82F6); color:#fff; }
+.res-edit-popup .cancel-res{ background: #f3f4f6; color:#111; }
+
+/* Ensure popup doesn't wrap weirdly on small screens */
+@media (max-width:720px){
+  .res-edit-popup { left: 8px !important; right: 8px !important; top: auto !important; bottom: 8px !important; }
+}
