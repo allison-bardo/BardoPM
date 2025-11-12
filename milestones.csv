@@ -1,12 +1,12 @@
 quarter,category,id,title,lead,date,people,progress
 Q1,Materials,mat1,Receive cast SPEEK roll,Allison,Q4–Q1,—,0
 Q1,Materials,mat2,Consistent SPEEK for electrospinning,Allison,—,—,60
-Q4,Materials,mat3,Identify leading AEM candidates,Allison,—,—,0
-Q1,Materials,mat4,Spinability of Flux/AEM,Allison,—,—,0
+Q4,Materials,mat3,Identify leading AEM candidates,Allison,—,SamW,0
+Q1,Materials,mat4,Spinability of Flux/AEM,Allison,—,Allison SamW Ryszard,0
 Q4,Fabrication,fab1,Spin 5 webs with consistent voltage,Allison,Oct 1 – Nov 30,Ryszard SamW Allison,0
 Q4,Fabrication,fab2,Make 20×30 cm² junction,Allison,December,Ryszard,0
 Q4,Fabrication,fab3,Send out ≤10×10 cm² samples,Allison,Oct 1 – Nov 30,SamW Allison,0
-Q4,Fabrication,fab4,Redwood samples (<1V @ 100mA/cm²),Allison,TBD,Allison,100
+Q4,Fabrication,fab4,Redwood samples (<1V @ 100mA/cm²),Allison,Oct,Allison,100
 Q4,Fabrication,fab5,Sample-making training,Allison,Dec (2 weeks),Mike Christian Cyril SamL,0
 Q4,Durability,dur1,Record 100h flow cell data on Bardo BPM,Allison,Oct 1 – Nov 15,Mike Allison Christian,0
 Q4,Durability,dur2,Retain 80% voltage after 100h,Allison,Nov 15 – Dec 15,TBD,0
@@ -24,5 +24,6 @@ Q4,Operations,op4,Safe lab procedures,Allison,—,Allison,0
 Q4,Operations,op5,Lab reorganization,Allison,—,Allison,0
 Q4,Operations,op6,General project management,Allison,—,Allison,0
 Q4,Operations,op7,Birthday party 🎉,Allison,Oct 15,Full Team,100
+
 
 
