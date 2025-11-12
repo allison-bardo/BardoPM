@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bardo PM Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <h1>Bardo PM Dashboard</h1>
+  </header>
+
+  <main class="container">
+    <section id="quarter-section" class="card small">
+      <label for="quarter-select">Select Quarter:</label>
+      <select id="quarter-select">
+        <option value="Q4">Q4</option>
+        <option value="Q1">Q1</option>
+      </select>
+    </section>
+
+    <section id="milestones" class="milestone-grid">
+      <div class="milestone-box" id="materials-box">
+        <h3>Materials</h3>
+        <div class="lead">Lead: Allison</div>
+        <div class="resourcing-setup" data-category="Materials"></div>
+        <div class="milestone-entries"></div>
+      </div>
+      <div class="milestone-box" id="fabrication-box">
+        <h3>Fabrication</h3>
+        <div class="lead">Lead: Christian</div>
+        <div class="resourcing-setup" data-category="Fabrication"></div>
+        <div class="milestone-entries"></div>
+      </div>
+      <div class="milestone-box" id="durability-box">
+        <h3>Durability</h3>
+        <div class="lead">Lead: Cyril</div>
+        <div class="resourcing-setup" data-category="Durability"></div>
+        <div class="milestone-entries"></div>
+      </div>
+      <div class="milestone-box" id="scaleup-box">
+        <h3>ScaleUp</h3>
+        <div class="lead">Lead: Ryszard</div>
+        <div class="resourcing-setup" data-category="ScaleUp"></div>
+        <div class="milestone-entries"></div>
+      </div>
+      <div class="milestone-box" id="operations-box">
+        <h3>Operations</h3>
+        <div class="lead">Lead: SamW</div>
+        <div class="resourcing-setup" data-category="Operations"></div>
+        <div class="milestone-entries"></div>
+      </div>
+    </section>
+
+    <section id="weekly-tasks" class="card">
+      <h2>Weekly Tasks</h2>
+      <div class="weekly-row" id="weekly-row">
+        <div id="weekly-materials" class="weekly-category palette-1">
+          <h3>Materials</h3>
+          <ul class="weekly-entries"></ul>
+          <input type="text" placeholder="New Task" class="new-task-title" />
+          <input type="text" placeholder="Semicolon-separated subtasks" class="new-task-subtasks" />
+          <div class="task-assign">
+            <select class="task-person"></select>
+            <input type="number" class="task-percent" min="0" max="100" placeholder="% effort" />
+          </div>
+          <button class="add-task-btn">Add Task</button>
+        </div>
+        <div id="weekly-fabrication" class="weekly-category palette-2">
+          <h3>Fabrication</h3>
+          <ul class="weekly-entries"></ul>
+          <input type="text" placeholder="New Task" class="new-task-title" />
+          <input type="text" placeholder="Semicolon-separated subtasks" class="new-task-subtasks" />
+          <div class="task-assign">
+            <select class="task-person"></select>
+            <input type="number" class="task-percent" min="0" max="100" placeholder="% effort" />
+          </div>
+          <button class="add-task-btn">Add Task</button>
+        </div>
+        <div id="weekly-durability" class="weekly-category palette-3">
+          <h3>Durability</h3>
+          <ul class="weekly-entries"></ul>
+          <input type="text" placeholder="New Task" class="new-task-title" />
+          <input type="text" placeholder="Semicolon-separated subtasks" class="new-task-subtasks" />
+          <div class="task-assign">
+            <select class="task-person"></select>
+            <input type="number" class="task-percent" min="0" max="100" placeholder="% effort" />
+          </div>
+          <button class="add-task-btn">Add Task</button>
+        </div>
+        <div id="weekly-scaleup" class="weekly-category palette-4">
+          <h3>ScaleUp</h3>
+          <ul class="weekly-entries"></ul>
+          <input type="text" placeholder="New Task" class="new-task-title" />
+          <input type="text" placeholder="Semicolon-separated subtasks" class="new-task-subtasks" />
+          <div class="task-assign">
+            <select class="task-person"></select>
+            <input type="number" class="task-percent" min="0" max="100" placeholder="% effort" />
+          </div>
+          <button class="add-task-btn">Add Task</button>
+        </div>
+        <div id="weekly-operations" class="weekly-category palette-5">
+          <h3>Operations</h3>
+          <ul class="weekly-entries"></ul>
+          <input type="text" placeholder="New Task" class="new-task-title" />
+          <input type="text" placeholder="Semicolon-separated subtasks" class="new-task-subtasks" />
+          <div class="task-assign">
+            <select class="task-person"></select>
+            <input type="number" class="task-percent" min="0" max="100" placeholder="% effort" />
+          </div>
+          <button class="add-task-btn">Add Task</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="weekly-resourcing" class="card">
+      <h2>Weekly Resourcing Overview</h2>
+      <div id="resourcing-bars"></div>
+    </section>
+
+    <section id="daily-updates" class="card">
+      <h2>Daily Updates</h2>
+      <div class="daily-row" id="daily-row"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">Bardo PM Dashboard • fun colors mode 🌈</footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
