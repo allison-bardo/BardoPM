@@ -394,6 +394,24 @@ document.addEventListener("input", e => {
   }
 });
 
+// --- Handle clicks on resourcing bar segments ---
+document.addEventListener("click", e => {
+  // Ignore clicks inside the popup (so it doesn’t close instantly)
+  if (e.target.closest(".res-edit-popup")) return;
+
+  // When clicking a colored segment, open the popup
+  const segment = e.target.closest(".res-bar-segment");
+  if (segment) {
+    e.stopPropagation(); // stop bubbling so it doesn't trigger close
+    openResEditPopupForCell(segment);
+    return;
+  }
+
+  // If click is outside bars and popups, close any open popup
+  closeResEditPopup();
+});
+
+
 // --- Initialize ---
 document.addEventListener("DOMContentLoaded", () => {
   milestonesData = loadFromStorage(STORAGE_KEYS.MILESTONES, { Q4: {}, Q1: {} });
@@ -405,6 +423,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderDailyBoxes();
   loadMilestonesCSV();
 });
+
 
 
 
