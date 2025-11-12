@@ -1,119 +1,122 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Bardo PM Dashboard</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project Dashboard</title>
   <link rel="stylesheet" href="style.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 </head>
+
 <body>
   <header class="site-header">
-    <h1>Bardo PM Dashboard</h1>
-    <nav class="top-nav"><a href="history.html" class="nav-link">📊 View History</a></nav>
-  </header>
-
-  <main class="container">
-    <section id="quarter-section" class="card small">
+    <h1>Quarterly Dashboard</h1>
+    <div>
       <label for="quarter-select">Select Quarter:</label>
       <select id="quarter-select">
         <option value="Q4">Q4</option>
         <option value="Q1">Q1</option>
       </select>
+      <a href="history.html" style="margin-left:20px;font-weight:600;">📊 View History</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- ====== Milestones Section ====== -->
+    <section id="quarterly-overview" class="card">
+      <h2>Quarterly Milestones</h2>
+      <div class="milestone-grid" id="milestone-grid">
+        <div id="materials-box" class="milestone-box palette-1">
+          <h3>Materials</h3>
+          <div class="milestone-entries"></div>
+        </div>
+        <div id="fabrication-box" class="milestone-box palette-2">
+          <h3>Fabrication</h3>
+          <div class="milestone-entries"></div>
+        </div>
+        <div id="durability-box" class="milestone-box palette-3">
+          <h3>Durability</h3>
+          <div class="milestone-entries"></div>
+        </div>
+        <div id="scaleup-box" class="milestone-box palette-4">
+          <h3>Scale Up</h3>
+          <div class="milestone-entries"></div>
+        </div>
+        <div id="operations-box" class="milestone-box palette-5">
+          <h3>Operations</h3>
+          <div class="milestone-entries"></div>
+        </div>
+      </div>
     </section>
 
-    <section id="milestones" class="milestone-grid"></section>
+    <!-- ====== Quarterly Resourcing Grid ====== -->
+    <section id="quarterly-resourcing" class="card">
+      <h2>Quarterly Resourcing</h2>
+      <div id="resourcing-grid"></div>
+      <button id="save-all-resourcing" style="
+        margin-top:10px;
+        padding:6px 14px;
+        border-radius:8px;
+        background:linear-gradient(90deg,#6EE7B7,#3B82F6);
+        color:white;
+        border:none;
+        font-weight:600;
+        cursor:pointer;
+      ">Save All Resourcing</button>
+    </section>
 
-<!-- Quarterly Resourcing Section -->
-<section id="quarterly-resourcing" class="card">
-  <h2>Quarterly Resourcing</h2>
-  <div id="resourcing-grid"></div>
-  <button id="save-all-resourcing" style="
-    margin-top:10px;
-    padding:6px 14px;
-    border-radius:8px;
-    background:linear-gradient(90deg,#6EE7B7,#3B82F6);
-    color:white;
-    border:none;
-    font-weight:600;
-    cursor:pointer;
-  ">Save All Resourcing</button>
-</section>
-
-
-    <section id="weekly-tasks" class="card">
-      <h2>Weekly Tasks</h2>
-      <div class="weekly-row" id="weekly-row">
+    <!-- ====== Weekly Tasks ====== -->
+    <section id="weekly-section" class="card">
+      <h2>Weekly Planning</h2>
+      <div id="weekly-row" class="weekly-row">
         <div id="weekly-materials" class="weekly-category palette-1">
           <h3>Materials</h3>
           <ul class="weekly-entries"></ul>
-          <input type="text" placeholder="New Task" class="new-task-title" />
-          <input type="text" placeholder="Semicolon-separated subtasks" class="new-task-subtasks" />
-          <div class="task-assign">
-            <select class="task-person"></select>
-            <input type="number" class="task-percent" min="0" max="100" placeholder="% effort" />
-          </div>
+          <input type="text" class="new-task-title" placeholder="Task title..." />
+          <input type="text" class="new-task-subtasks" placeholder="Subtasks (semicolon-separated)" />
           <button class="add-task-btn">Add Task</button>
         </div>
         <div id="weekly-fabrication" class="weekly-category palette-2">
           <h3>Fabrication</h3>
           <ul class="weekly-entries"></ul>
-          <input type="text" placeholder="New Task" class="new-task-title" />
-          <input type="text" placeholder="Semicolon-separated subtasks" class="new-task-subtasks" />
-          <div class="task-assign">
-            <select class="task-person"></select>
-            <input type="number" class="task-percent" min="0" max="100" placeholder="% effort" />
-          </div>
+          <input type="text" class="new-task-title" placeholder="Task title..." />
+          <input type="text" class="new-task-subtasks" placeholder="Subtasks (semicolon-separated)" />
           <button class="add-task-btn">Add Task</button>
         </div>
         <div id="weekly-durability" class="weekly-category palette-3">
           <h3>Durability</h3>
           <ul class="weekly-entries"></ul>
-          <input type="text" placeholder="New Task" class="new-task-title" />
-          <input type="text" placeholder="Semicolon-separated subtasks" class="new-task-subtasks" />
-          <div class="task-assign">
-            <select class="task-person"></select>
-            <input type="number" class="task-percent" min="0" max="100" placeholder="% effort" />
-          </div>
+          <input type="text" class="new-task-title" placeholder="Task title..." />
+          <input type="text" class="new-task-subtasks" placeholder="Subtasks (semicolon-separated)" />
           <button class="add-task-btn">Add Task</button>
         </div>
         <div id="weekly-scaleup" class="weekly-category palette-4">
-          <h3>ScaleUp</h3>
+          <h3>Scale Up</h3>
           <ul class="weekly-entries"></ul>
-          <input type="text" placeholder="New Task" class="new-task-title" />
-          <input type="text" placeholder="Semicolon-separated subtasks" class="new-task-subtasks" />
-          <div class="task-assign">
-            <select class="task-person"></select>
-            <input type="number" class="task-percent" min="0" max="100" placeholder="% effort" />
-          </div>
+          <input type="text" class="new-task-title" placeholder="Task title..." />
+          <input type="text" class="new-task-subtasks" placeholder="Subtasks (semicolon-separated)" />
           <button class="add-task-btn">Add Task</button>
         </div>
         <div id="weekly-operations" class="weekly-category palette-5">
           <h3>Operations</h3>
           <ul class="weekly-entries"></ul>
-          <input type="text" placeholder="New Task" class="new-task-title" />
-          <input type="text" placeholder="Semicolon-separated subtasks" class="new-task-subtasks" />
-          <div class="task-assign">
-            <select class="task-person"></select>
-            <input type="number" class="task-percent" min="0" max="100" placeholder="% effort" />
-          </div>
+          <input type="text" class="new-task-title" placeholder="Task title..." />
+          <input type="text" class="new-task-subtasks" placeholder="Subtasks (semicolon-separated)" />
           <button class="add-task-btn">Add Task</button>
         </div>
       </div>
     </section>
 
-    <section id="weekly-resourcing" class="card">
-      <h2>Weekly Resourcing Overview</h2>
-      <div id="resourcing-bars"></div>
-    </section>
-
-    <section id="daily-updates" class="card">
+    <!-- ====== Daily Updates ====== -->
+    <section id="daily-section" class="card">
       <h2>Daily Updates</h2>
-      <div class="daily-row" id="daily-row"></div>
+      <div id="daily-row" class="daily-row"></div>
     </section>
   </main>
 
-  <footer class="site-footer">Bardo PM Dashboard • fun colors mode 🌈</footer>
+  <footer class="site-footer">
+    <p>© 2025 Project Dashboard</p>
+  </footer>
 
   <script src="script.js"></script>
 </body>
