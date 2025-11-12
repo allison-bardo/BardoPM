@@ -296,12 +296,6 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') closeResEditPopup();
 });
 
-// hook Save All button (ensure button exists in DOM)
-document.addEventListener('DOMContentLoaded', function() {
-  const saveBtn = document.getElementById('save-all-resourcing');
-  if (saveBtn) saveBtn.addEventListener('click', saveAllResourcing);
-});
-
 
 // --- Weekly Tasks ---
 weeklyPlans = loadFromStorage("weeklyPlans", { Q4: {}, Q1: {} });
@@ -424,6 +418,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderDailyBoxes();
   loadMilestonesCSV();
 });
+
 
 
 
