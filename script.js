@@ -170,6 +170,7 @@ function renderQuarterlyResourcing(quarter) {
 
 
 function openResEditPopupForCell(cell) {
+  console.log("Popup triggered for", cell.dataset.person, cell.dataset.category); // 👈 debug
   closeResEditPopup(); // remove any existing one
   const person = cell.dataset.person;
   const quarter = getCurrentQuarter();
@@ -423,6 +424,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderDailyBoxes();
   loadMilestonesCSV();
 });
+
 
 
 
