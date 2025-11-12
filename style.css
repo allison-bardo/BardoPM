@@ -206,18 +206,27 @@ body{
   border-collapse: collapse;
   margin-top: 10px;
   text-align: center;
+  table-layout: fixed; 
 }
 
-.resourcing-table th,
+.resourcing-table th: nth-child(2),
+.resourcing-table td: nth-child(2) {
+  width: 80%;
+  min-width: 120px;
+}
+
+.resourcing-table th: first-child,
+.resourcing-table td: first-child {
+  width: 20%;
+  min-width: 120px;
+}
+.resourcing-table th
 .resourcing-table td {
-  padding: 6px 8px;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
-}
-
-.resourcing-table th {
   font-weight: 600;
   color: #1e293b;
   background: rgba(255,255,255,0.7);
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
 }
 
 .res-bar-row {
