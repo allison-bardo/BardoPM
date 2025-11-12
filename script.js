@@ -125,61 +125,69 @@ function ensureResourcingForQuarter(quarter) {
 function renderQuarterlyResourcing(quarter) {
   const container = document.getElementById('resourcing-grid');
   if (!container) return;
-  ensureResourcingForQuarter(quarter);
 
+  ensureResourcingForQuarter(quarter);
   const all = loadFromStorage(STORAGE_KEYS.RESOURCING, {});
   const data = all[quarter] || {};
 
-  let html = `<table class="resourcing-table">
-    <thead><tr><th>Person</th><th>Total Allocation</th></tr></thead><tbody>`;
+  let html = `
+    <table class="resourcing-table">
+      <thead>
+        <tr><th>Person</th><th>Total Allocation</th></tr>
+      </thead>
+      <tbody>`;
 
   people.forEach(person => {
     let total = 0;
     let segments = "";
 
+    // build each colored segment
     categories.forEach((category, i) => {
       const val = data[category]?.[person] || 0;
       total += val;
       const paletteClass = `palette-${i + 1}-bg`;
       if (val > 0) {
-        segments += `<div class="res-bar-segment ${paletteClass}" 
-                      data-person="${person}" data-category="${category}"
-                      style="width:${val}%;"
-                      title="${category}: ${val}%">${val > 8 ? val + "%" : ""}</div>`;
+        segments += `
+          <div class="res-bar-segment ${paletteClass}" 
+               data-person="${person}" data-category="${category}"
+               style="width:${val}%;"
+               title="${category}: ${val}%">
+               ${val > 8 ? val + "%" : ""}
+          </div>`;
       }
     });
 
-    total = Math.min(100, total); // cap total visually
+    total = Math.min(100, total); // visually cap to 100%
+
+    // fallback if no segments
+    const barHTML =
+      segments ||
+      `<div class="res-bar-segment empty-segment" 
+            data-person="${person}" 
+            data-category="Materials"
+            style="width:100%;background:rgba(0,0,0,0.05);color:#777;cursor:pointer;text-align:center;">
+            Set Resourcing
+        </div>`;
+
     html += `
       <tr>
         <td style="text-align:left;padding-left:10px;font-weight:600">${person}</td>
-        <td>
-          <div class="res-bar-row">${segments || "<div style='width:100%;text-align:center;color:#999'>0%</div>"}</div>
-        </td>
+        <td><div class="res-bar-row">${barHTML}</div></td>
       </tr>`;
   });
 
-  total = Math.min(100, total); // cap total visually
-html += `
-  <tr>
-    <td style="text-align:left;padding-left:10px;font-weight:600">${person}</td>
-    <td>
-      <div class="res-bar-row" data-person="${person}">
-        ${
-          segments ||
-          // 👇 This line replaces the static 0% text with a clickable empty bar
-          `<div class="res-bar-segment empty-segment" 
-                data-person="${person}" 
-                data-category="Materials" 
-                style="width:100%;background:rgba(0,0,0,0.05);color:#777;cursor:pointer;">
-                Set Resourcing
-            </div>`
-        }
-      </div>
-    </td>
-  </tr>`;
-
+  html += `</tbody></table>`;
   container.innerHTML = html;
+
+  // enable click popups
+  container.querySelectorAll(".res-bar-segment, .empty-segment").forEach(seg => {
+    seg.addEventListener("click", e => {
+      e.stopPropagation();
+      openResEditPopupForCell(e.target);
+    });
+  });
+}
+
 
   // keep your popup editing logic functional
   container.querySelectorAll(".res-bar-segment").forEach(seg => {
@@ -437,6 +445,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderDailyBoxes();
   loadMilestonesCSV();
 });
+
 
 
 
