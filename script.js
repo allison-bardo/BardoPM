@@ -28,7 +28,7 @@ function loadFromStorage(key, fallback){ const data = localStorage.getItem(key);
 // --- Milestones CSV loader ---
 function loadMilestonesCSV(){
   if (typeof Papa === "undefined") return;
-  Papa.parse("milestones.csv", {
+  Papa.parse(`milestones.csv?nocache=${Date.now()}`, {
     download: true, header: true, skipEmptyLines: true,
     complete: function(results){
       milestonesData = { Q4: {}, Q1: {} };
