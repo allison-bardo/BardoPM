@@ -193,7 +193,7 @@ function renderQuarterlyResourcing(quarter) {
   container.querySelectorAll(".res-bar-segment").forEach(seg => {
     seg.addEventListener("click", e => openResEditPopupForCell(e.target));
   });
-}
+
 
 
 function openResEditPopupForCell(cell) {
@@ -445,6 +445,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderDailyBoxes();
   loadMilestonesCSV();
 });
+
 
 
 
