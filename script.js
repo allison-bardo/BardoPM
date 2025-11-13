@@ -188,14 +188,6 @@ function renderQuarterlyResourcing(quarter) {
   });
 }
 
-
-  // keep your popup editing logic functional
-  container.querySelectorAll(".res-bar-segment").forEach(seg => {
-    seg.addEventListener("click", e => openResEditPopupForCell(e.target));
-  });
-
-
-
 function openResEditPopupForCell(cell) {
   console.log("Popup triggered for", cell.dataset.person, cell.dataset.category); // 👈 debug
   closeResEditPopup(); // remove any existing one
@@ -445,6 +437,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderDailyBoxes();
   loadMilestonesCSV();
 });
+
 
 
 
