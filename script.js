@@ -51,7 +51,6 @@ function loadMilestonesCSV() {
           date: row.date,
           people: row.people,
           progress: parseInt(row.progress) || 0,
-          lead: row.lead || "Allison"
         };
         if (!categories.includes(row.category)) return;
 
@@ -437,6 +436,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderDailyBoxes();
   loadMilestonesCSV();
 });
+
 
 
 
