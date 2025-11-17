@@ -309,6 +309,21 @@ body{
   text-align: center;
   table-layout: fixed;
 }
+/* Match weekly resourcing column spacing to quarterly */
+.weekly-resourcing-table th:nth-child(1),
+.weekly-resourcing-table td:nth-child(1) {
+  width: 20%;
+  min-width: 120px;
+  text-align: left;
+  padding-left: 10px;
+}
+
+.weekly-resourcing-table th:nth-child(2),
+.weekly-resourcing-table td:nth-child(2) {
+  width: 80%;
+  min-width: 300px;
+}
+
 
 .weekly-resourcing-table th,
 .weekly-resourcing-table td {
