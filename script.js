@@ -76,7 +76,6 @@ function renderQuarterlyOverview(quarter) {
       entry.className = "milestone-entry";
       entry.innerHTML = `
         <strong>${m.title}</strong><br>
-        <em>Lead: ${m.lead}</em><br>
         Date: ${m.date || "—"}<br>
         Personnel: ${m.people || "—"}<br>
         Progress: <input type="number" min="0" max="100" value="${m.progress}" 
@@ -576,6 +575,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderDailyBoxes();
   loadMilestonesCSV();
 });
+
 
 
 
