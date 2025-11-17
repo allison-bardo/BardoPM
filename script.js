@@ -319,15 +319,96 @@ document.addEventListener('keydown', function(e) {
 weeklyPlans = loadFromStorage("weeklyPlans", { Q4: {}, Q1: {} });
 function loadWeeklyTasks(quarter, week = "Week 1") {
   categories.forEach(category => {
-    const list = document.querySelector(`#weekly-${category.toLowerCase()} .weekly-entries`);
+    const list = document.querySelector(
+      `#weekly-${category.toLowerCase()} .weekly-entries`
+    );
     if (!list) return;
+
     list.innerHTML = "";
     const tasks = weeklyPlans[quarter]?.[week]?.[category] || [];
+
     tasks.forEach(task => {
       const li = document.createElement("li");
-      li.textContent = task;
+      li.innerHTML = `
+        <strong>${task.title}</strong> — ${task.person} (${task.percent}%)
+        <ul style="margin:4px 0 0 14px; padding:0;">
+          ${task.subtasks.map(s => `<li>${s}</li>`).join("")}
+        </ul>
+      `;
       list.appendChild(li);
     });
+  });
+}
+
+
+function initWeeklyTaskInputs() {
+  categories.forEach(category => {
+    const catId = category.toLowerCase();
+    const box = document.getElementById(`weekly-${catId}`);
+    if (!box) return;
+
+    const titleInput = box.querySelector(".new-task-title");
+    const subtasksInput = box.querySelector(".new-task-subtasks");
+
+    // Add missing inputs:
+    let personInput = box.querySelector(".new-task-person");
+    let percentInput = box.querySelector(".new-task-percent");
+
+    if (!personInput) {
+      personInput = document.createElement("select");
+      personInput.className = "new-task-person";
+      people.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = p;
+        opt.textContent = p;
+        personInput.appendChild(opt);
+      });
+      subtasksInput.insertAdjacentElement("afterend", personInput);
+    }
+
+    if (!percentInput) {
+      percentInput = document.createElement("input");
+      percentInput.type = "number";
+      percentInput.className = "new-task-percent";
+      percentInput.placeholder = "%";
+      percentInput.min = 0;
+      percentInput.max = 100;
+      personInput.insertAdjacentElement("afterend", percentInput);
+    }
+
+    // Add Task button
+    const addBtn = box.querySelector(".add-task-btn");
+    addBtn.onclick = () => {
+      const quarter = getCurrentQuarter();
+      const week = "Week 1"; // (You can upgrade this later)
+
+      const title = titleInput.value.trim();
+      const subtasks = subtasksInput.value.trim();
+      const person = personInput.value;
+      const percent = parseInt(percentInput.value) || 0;
+
+      if (!title) return;
+
+      const taskObj = {
+        title,
+        subtasks: subtasks ? subtasks.split(";").map(s => s.trim()) : [],
+        person,
+        percent
+      };
+
+      if (!weeklyPlans[quarter]) weeklyPlans[quarter] = {};
+      if (!weeklyPlans[quarter][week]) weeklyPlans[quarter][week] = {};
+      if (!weeklyPlans[quarter][week][category]) weeklyPlans[quarter][week][category] = [];
+
+      weeklyPlans[quarter][week][category].push(taskObj);
+      saveToStorage(STORAGE_KEYS.WEEKLY, weeklyPlans);
+
+      titleInput.value = "";
+      subtasksInput.value = "";
+      percentInput.value = "";
+
+      loadWeeklyTasks(quarter);
+    };
   });
 }
 
@@ -433,9 +514,11 @@ document.addEventListener("DOMContentLoaded", () => {
   renderQuarterlyOverview(getCurrentQuarter());
   renderQuarterlyResourcing(getCurrentQuarter());
   loadWeeklyTasks(getCurrentQuarter());
+  initWeeklyTaskInputs();
   renderDailyBoxes();
   loadMilestonesCSV();
 });
+
 
 
 
