@@ -314,6 +314,59 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') closeResEditPopup();
 });
 
+function renderWeeklyResourcing(quarter, week = "Week 1") {
+  const container = document.getElementById("weekly-resourcing-grid");
+  if (!container) return;
+
+  const tasks = weeklyPlans[quarter]?.[week] || {};
+
+  // prepare: person → { category: %, ... }
+  const totals = {};
+  people.forEach(p => totals[p] = {});
+
+  categories.forEach(cat => {
+    const taskList = tasks[cat] || [];
+    taskList.forEach(task => {
+      if (!totals[task.person][cat]) totals[task.person][cat] = 0;
+      totals[task.person][cat] += task.percent;
+    });
+  });
+
+  let html = `
+    <table class="weekly-resourcing-table">
+      <thead>
+        <tr><th>Person</th><th>Weekly Allocation</th></tr>
+      </thead>
+      <tbody>`;
+
+  people.forEach(person => {
+    let segments = "";
+
+    categories.forEach((cat, i) => {
+      const val = totals[person][cat] || 0;
+      if (val > 0) {
+        segments += `
+          <div class="weekly-resourcing-segment palette-${i + 1}-bg"
+               style="width:${val}%;">
+               ${val > 10 ? val + "%" : ""}
+          </div>`;
+      }
+    });
+
+    const bar =
+      segments ||
+      `<div style="width:100%; color:#777; text-align:center;">0%</div>`;
+
+    html += `
+      <tr>
+        <td style="text-align:left;padding-left:10px;">${person}</td>
+        <td><div class="weekly-resourcing-row">${bar}</div></td>
+      </tr>`;
+  });
+
+  html += `</tbody></table>`;
+  container.innerHTML = html;
+}
 
 // --- Weekly Tasks ---
 weeklyPlans = loadFromStorage("weeklyPlans", { Q4: {}, Q1: {} });
@@ -408,6 +461,8 @@ function initWeeklyTaskInputs() {
       percentInput.value = "";
 
       loadWeeklyTasks(quarter);
+      renderWeeklyResourcing(quarter);
+
     };
   });
 }
@@ -469,7 +524,9 @@ document.getElementById('quarter-select').addEventListener('change', () => {
   renderQuarterlyOverview(q);
   renderQuarterlyResourcing(q);
   loadWeeklyTasks(q);
+  renderWeeklyResourcing(q);  // ← ADD THIS
 });
+
 
 document.addEventListener("input", e => {
   if (e.target.classList.contains("progress-input")) {
@@ -514,10 +571,12 @@ document.addEventListener("DOMContentLoaded", () => {
   renderQuarterlyOverview(getCurrentQuarter());
   renderQuarterlyResourcing(getCurrentQuarter());
   loadWeeklyTasks(getCurrentQuarter());
+  renderWeeklyResourcing(getCurrentQuarter());
   initWeeklyTaskInputs();
   renderDailyBoxes();
   loadMilestonesCSV();
 });
+
 
 
 
