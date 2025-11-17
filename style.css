@@ -301,3 +301,38 @@ body{
   background: rgba(0,0,0,0.03);
   border-radius: 6px;
 }
+/* Weekly resourcing uses same bar styles as quarterly */
+.weekly-resourcing-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  text-align: center;
+  table-layout: fixed;
+}
+
+.weekly-resourcing-table th,
+.weekly-resourcing-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  font-weight: 600;
+}
+
+.weekly-resourcing-row {
+  width: 100%;
+  height: 20px;
+  display: flex;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: inset 0 0 4px rgba(0,0,0,0.1);
+}
+
+.weekly-resourcing-segment {
+  height: 100%;
+  transition: width 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  color: #111;
+  font-weight: 600;
+}
