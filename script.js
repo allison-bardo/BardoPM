@@ -1,9 +1,5 @@
-// ---------------- Firebase Firestore imports (ES module) ----------------
-// make sure your <script> tag that loads this file is type="module"
-import { 
-  getFirestore, doc, getDoc, setDoc 
-} from "firebase/firestore";
-const db = getFirestore(app);
+// Firestore available globally:
+db.collection(...)
 
 // ---------------- App data ----------------
 const categories = ["Materials", "Fabrication", "Durability", "ScaleUp", "Operations"];
@@ -39,24 +35,18 @@ function loadFromStorage(key, fallback) {
 
 // ---------------- Firestore helpers ----------------
 async function loadFS(path, fallback = {}) {
-  try {
-    const ref = doc(db, path);
-    const snap = await getDoc(ref);
-    return snap.exists() ? snap.data() : fallback;
-  } catch (err) {
-    console.warn("Firestore load failed for", path, err);
-    return fallback;
-  }
+  const ref = db.doc(path);           // ← v8 syntax
+  const snap = await ref.get();       // ← v8 syntax
+
+  return snap.exists ? snap.data() : fallback;
 }
 
+
 async function saveFS(path, data) {
-  try {
-    const ref = doc(db, path);
-    await setDoc(ref, data, { merge: true });
-  } catch (err) {
-    console.warn("Firestore save failed for", path, err);
-  }
+  const ref = db.doc(path);
+  await ref.set(data, { merge: true });
 }
+
 
 // ---------------- Convenience wrappers that keep localStorage in sync ----------------
 async function saveMilestones(quarter, data) {
@@ -650,3 +640,4 @@ document.addEventListener("DOMContentLoaded", async () => {
   // still allow CSV loading (will overwrite current quarter's milestones)
   loadMilestonesCSV();
 });
+
