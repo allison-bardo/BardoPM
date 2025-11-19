@@ -1,9 +1,4 @@
 /************************************
- *  FIRESTORE (Firebase v8)
- ************************************/
-const db = firebase.firestore();
-
-/************************************
  *  GLOBAL CONSTANTS + STRUCTURES
  ************************************/
 const categories = ["Materials", "Fabrication", "Durability", "ScaleUp", "Operations"];
@@ -643,4 +638,5 @@ document.getElementById('quarter-select').addEventListener('change', async () =>
   // try loading CSV (optional)
   loadMilestonesCSV();
 })();
+
 
