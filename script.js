@@ -639,4 +639,4 @@ document.getElementById('quarter-select').addEventListener('change', async () =>
 
   // try loading CSV (optional)
   loadMilestonesCSV();
-}); 
+})();
