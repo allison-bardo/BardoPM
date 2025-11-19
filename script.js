@@ -99,17 +99,19 @@ function renderQuarterlyOverview(quarter) {
     items.forEach(m => {
       const entry = document.createElement("div");
       entry.className = "milestone-entry";
-      entry.innerHTML = `
-        <strong>${m.title}</strong><br>
-        Date: ${m.date || "—"}<br>
-        Personnel: ${m.people || "—"}<br>
-        Progress:
-        <input type="number" min="0" max="100" 
-               value="${m.progress}"
-               data-id="${m.id}" 
-               data-quarter="${quarter}"
-               data-category="${category}"
-               class="progress-input"
+entry.innerHTML = `
+  <strong>${m.title}</strong><br>
+  Date: ${m.date || "—"}<br>
+  Personnel: ${m.people || "—"}<br>
+  Progress:
+  <input type="number" min="0" max="100" 
+         value="${m.progress}"
+         data-id="${m.id}" 
+         data-quarter="${quarter}"
+         data-category="${category}"
+         class="progress-input">
+`;
+
 /************************************
  *  QUARTERLY RESOURCING (from Firestore)
  ************************************/
@@ -638,3 +640,4 @@ document.getElementById('quarter-select').addEventListener('change', async () =>
   // try loading CSV (optional)
   loadMilestonesCSV();
 })();
+
