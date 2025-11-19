@@ -1,118 +1,100 @@
-// Firestore available globally:
-db.collection(...)
+/************************************
+ *  FIRESTORE (Firebase v8)
+ ************************************/
+const db = firebase.firestore();
 
-// ---------------- App data ----------------
+/************************************
+ *  GLOBAL CONSTANTS + STRUCTURES
+ ************************************/
 const categories = ["Materials", "Fabrication", "Durability", "ScaleUp", "Operations"];
-const people = [
-  "Allison",
-  "Christian",
-  "Cyril",
-  "Mike",
-  "Ryszard",
-  "SamL",
-  "SamW"
-];
+const people = ["Allison", "Christian", "Cyril", "Mike", "Ryszard", "SamL", "SamW"];
 
-const STORAGE_KEYS = {
-  MILESTONES: "milestonesData",
-  WEEKLY: "weeklyPlans",
-  DAILY: "dailyLogs",
-  RESOURCING: "resourcingData_v1"
-};
+let milestonesData = { Q1: {}, Q4: {} };
+let weeklyPlans = { Q1: {}, Q4: {} };
+let dailyLogs = {}; 
+let quarterlyResourcing = { Q1: {}, Q4: {} };
 
-let milestonesData = { Q4: {}, Q1: {} };
-let weeklyPlans = { Q4: {}, Q1: {} };
-let dailyLogs = {};
-
-// ---------------- LocalStorage helpers ----------------
-function saveToStorage(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
-function loadFromStorage(key, fallback) {
-  const data = localStorage.getItem(key);
-  return data ? JSON.parse(data) : fallback;
-}
-
-// ---------------- Firestore helpers ----------------
+/************************************
+ *  FIRESTORE HELPERS
+ ************************************/
 async function loadFS(path, fallback = {}) {
-  const ref = db.doc(path);           // ← v8 syntax
-  const snap = await ref.get();       // ← v8 syntax
-
+  const ref = db.doc(path);
+  const snap = await ref.get();
   return snap.exists ? snap.data() : fallback;
 }
 
-
 async function saveFS(path, data) {
   const ref = db.doc(path);
-  await ref.set(data, { merge: true });
+  return ref.set(data, { merge: true });
 }
 
-
-// ---------------- Convenience wrappers that keep localStorage in sync ----------------
-async function saveMilestones(quarter, data) {
-  // save to firestore (async) and persist to localStorage for immediate availability
-  saveToStorage(STORAGE_KEYS.MILESTONES, { ...(loadFromStorage(STORAGE_KEYS.MILESTONES, {})), [quarter]: data });
-  saveFS(`milestones/${quarter}`, data);
+/************************************
+ *  QUARTER HELPERS
+ ************************************/
+function getCurrentQuarter() {
+  return document.getElementById("quarter-select").value;
 }
 
-async function saveWeekly(quarter, data) {
-  saveToStorage(STORAGE_KEYS.WEEKLY, { ...(loadFromStorage(STORAGE_KEYS.WEEKLY, {})), [quarter]: data });
-  saveFS(`weekly/${quarter}`, data);
-}
-
-async function saveDailyLogs(data) {
-  saveToStorage(STORAGE_KEYS.DAILY, data);
-  saveFS(`daily/logs`, data);
-}
-
-async function saveResourcing(quarter, data) {
-  saveToStorage(STORAGE_KEYS.RESOURCING, { ...(loadFromStorage(STORAGE_KEYS.RESOURCING, {})), [quarter]: data });
-  saveFS(`resourcing/${quarter}`, data);
-}
-
-// ---------------- Load CSV for milestones (keeps local storage + saves to firestore) ----------------
-function loadMilestonesCSV() {
-  if (typeof Papa === "undefined") return;
+/************************************
+ *  LOAD MILESTONES FROM CSV → FS → UI
+ ************************************/
+async function loadMilestonesCSV() {
   Papa.parse("milestones.csv", {
     download: true,
     header: true,
     skipEmptyLines: true,
-    complete: function(results) {
-      milestonesData = { Q4: {}, Q1: {} };
+    complete: async (results) => {
+      // Reset
+      milestonesData = { Q1: {}, Q4: {} };
       categories.forEach(c => {
-        milestonesData.Q4[c] = [];
         milestonesData.Q1[c] = [];
+        milestonesData.Q4[c] = [];
       });
 
+      // Build data structure
       results.data.forEach(row => {
+        if (!categories.includes(row.category)) return;
+
         const milestone = {
           id: row.id,
           title: row.title,
           date: row.date,
           people: row.people,
-          progress: parseInt(row.progress) || 0,
+          progress: parseInt(row.progress) || 0
         };
-        if (!categories.includes(row.category)) return;
 
         if (row.quarter === "Q1") milestonesData.Q1[row.category].push(milestone);
         else milestonesData.Q4[row.category].push(milestone);
       });
 
-      // persist locally and to Firestore for the currently selected quarter
-      const q = getCurrentQuarter();
-      saveMilestones(q, milestonesData[q]);
-      // re-render
-      renderQuarterlyOverview(q);
+      // Save to Firestore
+      await saveFS("dashboard/milestones", milestonesData);
+
+      // Render UI
+      renderQuarterlyOverview(getCurrentQuarter());
     }
   });
 }
 
-// ---------------- Render Milestones ----------------
+/************************************
+ *  LOAD ALL DASHBOARD DATA FROM FIRESTORE
+ ************************************/
+async function loadAllFromFirestore() {
+  milestonesData = await loadFS("dashboard/milestones", { Q1: {}, Q4: {} });
+  weeklyPlans = await loadFS("dashboard/weeklyPlans", { Q1: {}, Q4: {} });
+  dailyLogs = await loadFS("dashboard/dailyLogs", {});
+  quarterlyResourcing = await loadFS("dashboard/resourcing", { Q1: {}, Q4: {} });
+}
+
+/************************************
+ *  RENDER MILESTONES
+ ************************************/
 function renderQuarterlyOverview(quarter) {
   categories.forEach(category => {
     const box = document.querySelector(`#${category.toLowerCase()}-box .milestone-entries`);
     if (!box) return;
     box.innerHTML = "";
+
     const items = milestonesData[quarter]?.[category] || [];
     items.forEach(m => {
       const entry = document.createElement("div");
@@ -121,274 +103,187 @@ function renderQuarterlyOverview(quarter) {
         <strong>${m.title}</strong><br>
         Date: ${m.date || "—"}<br>
         Personnel: ${m.people || "—"}<br>
-        Progress: <input type="number" min="0" max="100" value="${m.progress}" 
-          data-id="${m.id}" data-quarter="${quarter}" class="progress-input"> %
-      `;
-      box.appendChild(entry);
+        Progress:
+        <input type="number" min="0" max="100" 
+               value="${m.progress}"
+               data-id="${m.id}" 
+               data-quarter="${quarter}"
+               data-category="${category}"
+               class="progress-input"
+/************************************
+ *  QUARTERLY RESOURCING (from Firestore)
+ ************************************/
+
+// Ensure structure exists for a quarter
+function ensureQuarterResourcing(quarter) {
+  if (!quarterlyResourcing[quarter]) quarterlyResourcing[quarter] = {};
+  categories.forEach(cat => {
+    if (!quarterlyResourcing[quarter][cat]) quarterlyResourcing[quarter][cat] = {};
+    people.forEach(p => {
+      if (quarterlyResourcing[quarter][cat][p] === undefined)
+        quarterlyResourcing[quarter][cat][p] = 0;
     });
   });
 }
 
-// ---------------- Quarterly resourcing rendering + popup editor ----------------
-const paletteColors = {
-  Materials: 'var(--accent-1)',
-  Fabrication: 'var(--accent-2)',
-  Durability: 'var(--accent-3)',
-  ScaleUp: 'var(--accent-4)',
-  Operations: 'var(--accent-5)'
-};
-
-function ensureResourcingForQuarter(quarter) {
-  const all = loadFromStorage(STORAGE_KEYS.RESOURCING, {});
-  if (!all[quarter]) {
-    all[quarter] = {};
-    categories.forEach(c => {
-      all[quarter][c] = {};
-      people.forEach(p => all[quarter][c][p] = 0);
-    });
-    saveToStorage(STORAGE_KEYS.RESOURCING, all);
-  } else {
-    let changed = false;
-    categories.forEach(c => {
-      if (!all[quarter][c]) { all[quarter][c] = {}; changed = true; }
-      people.forEach(p => {
-        if (all[quarter][c][p] === undefined) { all[quarter][c][p] = 0; changed = true; }
-      });
-    });
-    if (changed) saveToStorage(STORAGE_KEYS.RESOURCING, all);
-  }
-}
-
+// Render the grid
 function renderQuarterlyResourcing(quarter) {
-  const container = document.getElementById('resourcing-grid');
+  const container = document.getElementById("resourcing-grid");
   if (!container) return;
 
-  ensureResourcingForQuarter(quarter);
-  const all = loadFromStorage(STORAGE_KEYS.RESOURCING, {});
-  const data = all[quarter] || {};
+  ensureQuarterResourcing(quarter);
+  const data = quarterlyResourcing[quarter];
 
   let html = `
     <table class="resourcing-table">
-      <thead>
-        <tr><th>Person</th><th>Total Allocation</th></tr>
-      </thead>
-      <tbody>`;
+      <thead><tr><th>Person</th><th>Total Allocation</th></tr></thead>
+      <tbody>
+  `;
 
   people.forEach(person => {
-    let total = 0;
     let segments = "";
+    let total = 0;
 
-    categories.forEach((category, i) => {
-      const val = data[category]?.[person] || 0;
+    categories.forEach((cat, i) => {
+      const val = data[cat][person] || 0;
       total += val;
-      const paletteClass = `palette-${i + 1}-bg`;
       if (val > 0) {
         segments += `
-          <div class="res-bar-segment ${paletteClass}" 
-               data-person="${person}" data-category="${category}"
-               style="width:${val}%;"
-               title="${category}: ${val}%">
+          <div class="res-bar-segment palette-${i + 1}-bg"
+               data-person="${person}"
+               data-category="${cat}"
+               style="width:${val}%;">
                ${val > 8 ? val + "%" : ""}
           </div>`;
       }
     });
 
-    total = Math.min(100, total);
-
-    const barHTML =
-      segments ||
-      `<div class="res-bar-segment empty-segment" 
-            data-person="${person}" 
-            data-category="Materials"
-            style="width:100%;background:rgba(0,0,0,0.05);color:#777;cursor:pointer;text-align:center;">
-            Set Resourcing
-        </div>`;
+    const bar = segments || `
+      <div class="res-bar-segment empty-segment"
+           data-person="${person}"
+           data-category="Materials"
+           style="width:100%;text-align:center;background:#eee;color:#555;cursor:pointer;">
+           Set Resourcing
+      </div>
+    `;
 
     html += `
       <tr>
         <td style="text-align:left;padding-left:10px;font-weight:600">${person}</td>
-        <td><div class="res-bar-row">${barHTML}</div></td>
-      </tr>`;
+        <td><div class="res-bar-row">${bar}</div></td>
+      </tr>
+    `;
   });
 
-  html += `</tbody></table>`;
+  html += "</tbody></table>";
   container.innerHTML = html;
 
+  // Add popup click listeners
   container.querySelectorAll(".res-bar-segment, .empty-segment").forEach(seg => {
     seg.addEventListener("click", e => {
       e.stopPropagation();
-      openResEditPopupForCell(e.target);
+      openResourcingPopup(e.target);
     });
   });
 }
 
-function openResEditPopupForCell(cell) {
-  console.log("Popup triggered for", cell.dataset.person, cell.dataset.category);
-  closeResEditPopup();
+/************************************
+ *  RESOURCING POPUP EDITOR
+ ************************************/
+function openResourcingPopup(cell) {
+  closeResourcingPopup(); // remove existing one
+
   const person = cell.dataset.person;
   const quarter = getCurrentQuarter();
-  ensureResourcingForQuarter(quarter);
+  ensureQuarterResourcing(quarter);
 
-  const all = loadFromStorage(STORAGE_KEYS.RESOURCING, {});
-  const data = all[quarter] || {};
-  const currentAllocations = {};
-
-  categories.forEach(cat => {
-    currentAllocations[cat] = data[cat]?.[person] || 0;
-  });
-
+  const existing = quarterlyResourcing[quarter];
   const popup = document.createElement("div");
   popup.className = "res-edit-popup";
 
-  let html = `<h4 style="margin:0 0 8px 0;">Edit Resourcing — ${person}</h4>`;
+  // Build popup HTML
+  let html = `<h4>Edit Resourcing — ${person}</h4>`;
 
   categories.forEach((cat, i) => {
-    const paletteClass = `palette-${i + 1}-bg`;
+    const val = existing[cat][person] || 0;
     html += `
-      <div class="res-popup-row" style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-        <div style="width:90px;font-weight:600;">${cat}</div>
-        <input type="range" min="0" max="100" value="${currentAllocations[cat]}" 
-               data-cat="${cat}" class="popup-slider ${paletteClass}" style="flex:1;">
-        <span class="popup-val" style="width:40px;text-align:right;">${currentAllocations[cat]}%</span>
-      </div>`;
+      <div class="res-popup-row">
+        <div class="popup-label">${cat}</div>
+        <input type="range" min="0" max="100" value="${val}"
+               class="popup-slider palette-${i + 1}-bg"
+               data-cat="${cat}">
+        <span class="popup-val">${val}%</span>
+      </div>
+    `;
   });
 
   html += `
-    <div class="popup-actions" style="margin-top:8px;text-align:right;">
+    <div class="popup-actions">
       <button class="cancel-res">Cancel</button>
       <button class="save-res">Save</button>
-    </div>`;
+    </div>
+  `;
 
   popup.innerHTML = html;
   document.body.appendChild(popup);
 
+  // Position popup
   const rect = cell.getBoundingClientRect();
-  const popupWidth = 320;
-  let left = rect.left + window.scrollX;
-  if (left + popupWidth > window.scrollX + window.innerWidth)
-    left = window.scrollX + window.innerWidth - popupWidth - 12;
-  let top = rect.bottom + window.scrollY + 6;
-  popup.style.left = `${left}px`;
-  popup.style.top = `${top}px`;
-  popup.style.width = popupWidth + "px";
+  popup.style.left = `${rect.left + window.scrollX}px`;
+  popup.style.top = `${rect.bottom + window.scrollY + 6}px`;
 
+  // Slider live update
   popup.querySelectorAll(".popup-slider").forEach(slider => {
     slider.addEventListener("input", e => {
-      e.target.closest(".res-popup-row").querySelector(".popup-val").textContent =
-        e.target.value + "%";
+      e.target
+        .closest(".res-popup-row")
+        .querySelector(".popup-val").textContent = e.target.value + "%";
     });
   });
 
-  popup.querySelector(".cancel-res").addEventListener("click", closeResEditPopup);
+  // Cancel
+  popup.querySelector(".cancel-res").addEventListener("click", closeResourcingPopup);
 
+  // Save → Firestore
   popup.querySelector(".save-res").addEventListener("click", async () => {
     const updated = {};
     popup.querySelectorAll(".popup-slider").forEach(slider => {
       updated[slider.dataset.cat] = parseInt(slider.value) || 0;
     });
 
-    const allLocal = loadFromStorage(STORAGE_KEYS.RESOURCING, {});
-    if (!allLocal[quarter]) allLocal[quarter] = {};
+    // Write to memory
     categories.forEach(cat => {
-      if (!allLocal[quarter][cat]) allLocal[quarter][cat] = {};
-      allLocal[quarter][cat][person] = updated[cat];
+      quarterlyResourcing[quarter][cat][person] = updated[cat];
     });
 
-    // persist locally and in Firestore
-    saveToStorage(STORAGE_KEYS.RESOURCING, allLocal);
-    saveResourcing(quarter, allLocal[quarter]);
+    // Write to Firestore
+    await saveFS("dashboard/resourcing", quarterlyResourcing);
 
-    closeResEditPopup();
+    closeResourcingPopup();
     renderQuarterlyResourcing(quarter);
   });
 }
 
-function closeResEditPopup() {
-  const existing = document.querySelector('.res-edit-popup');
-  if (existing) existing.remove();
+// Close popup if open
+function closeResourcingPopup() {
+  const old = document.querySelector(".res-edit-popup");
+  if (old) old.remove();
 }
 
-// convenience update one value (keeps localstorage)
-function updateResourcingValue(person, category, value) {
-  const quarter = getCurrentQuarter();
-  const all = loadFromStorage(STORAGE_KEYS.RESOURCING, {});
-  if (!all[quarter]) all[quarter] = {};
-  if (!all[quarter][category]) all[quarter][category] = {};
-  all[quarter][category][person] = value;
-  saveToStorage(STORAGE_KEYS.RESOURCING, all);
-  // also push to Firestore async
-  saveResourcing(quarter, all[quarter]);
-}
+/************************************
+ *  GLOBAL CLICK → CLOSE POPUP
+ ************************************/
+document.addEventListener("click", e => {
+  if (e.target.closest(".res-edit-popup")) return; // inside popup
+  closeResourcingPopup();
+});
+/********************************************
+ *  WEEKLY TASKS (stored in Firestore)
+ ********************************************/
 
-function saveAllResourcing() {
-  const quarter = getCurrentQuarter();
-  ensureResourcingForQuarter(quarter);
-  const all = loadFromStorage(STORAGE_KEYS.RESOURCING, {});
-  saveToStorage(STORAGE_KEYS.RESOURCING, all);
-  // push to Firestore
-  saveResourcing(quarter, all[quarter]);
-  alert('Quarterly resourcing saved for ' + quarter);
-}
+// weeklyPlans already loaded in Chunk 1
+// Structure: weeklyPlans[quarter][week][category] = [taskObj]
 
-// remove old .res-cell handler (was conflicting with .res-bar-segment)
-// we now use the global segment click handler (below)
-
-// ---------------- Weekly Resourcing Renderer ----------------
-function renderWeeklyResourcing(quarter, week = "Week 1") {
-  const container = document.getElementById("weekly-resourcing-grid");
-  if (!container) return;
-
-  const tasks = weeklyPlans[quarter]?.[week] || {};
-
-  const totals = {};
-  people.forEach(p => totals[p] = {});
-
-  categories.forEach(cat => {
-    const taskList = tasks[cat] || [];
-    taskList.forEach(task => {
-      if (!totals[task.person][cat]) totals[task.person][cat] = 0;
-      totals[task.person][cat] += task.percent;
-    });
-  });
-
-  let html = `
-    <table class="weekly-resourcing-table">
-      <thead>
-        <tr><th>Person</th><th>Weekly Allocation</th></tr>
-      </thead>
-      <tbody>`;
-
-  people.forEach(person => {
-    let segments = "";
-
-    categories.forEach((cat, i) => {
-      const val = totals[person][cat] || 0;
-      if (val > 0) {
-        segments += `
-          <div class="weekly-resourcing-segment palette-${i + 1}-bg"
-               style="width:${val}%;">
-               ${val > 10 ? val + "%" : ""}
-          </div>`;
-      }
-    });
-
-    const bar =
-      segments ||
-      `<div style="width:100%; color:#777; text-align:center;">0%</div>`;
-
-    html += `
-      <tr>
-        <td style="text-align:left;padding-left:10px;">${person}</td>
-        <td><div class="weekly-resourcing-row">${bar}</div></td>
-      </tr>`;
-  });
-
-  html += `</tbody></table>`;
-  container.innerHTML = html;
-}
-
-// ---------------- Weekly Tasks ----------------
-weeklyPlans = loadFromStorage(STORAGE_KEYS.WEEKLY, { Q4: {}, Q1: {} });
 function loadWeeklyTasks(quarter, week = "Week 1") {
   categories.forEach(category => {
     const list = document.querySelector(
@@ -414,8 +309,7 @@ function loadWeeklyTasks(quarter, week = "Week 1") {
 
 function initWeeklyTaskInputs() {
   categories.forEach(category => {
-    const catId = category.toLowerCase();
-    const box = document.getElementById(`weekly-${catId}`);
+    const box = document.getElementById(`weekly-${category.toLowerCase()}`);
     if (!box) return;
 
     const titleInput = box.querySelector(".new-task-title");
@@ -424,6 +318,7 @@ function initWeeklyTaskInputs() {
     let personInput = box.querySelector(".new-task-person");
     let percentInput = box.querySelector(".new-task-percent");
 
+    // Inject dropdown of people
     if (!personInput) {
       personInput = document.createElement("select");
       personInput.className = "new-task-person";
@@ -436,6 +331,7 @@ function initWeeklyTaskInputs() {
       subtasksInput.insertAdjacentElement("afterend", personInput);
     }
 
+    // % Input
     if (!percentInput) {
       percentInput = document.createElement("input");
       percentInput.type = "number";
@@ -446,8 +342,9 @@ function initWeeklyTaskInputs() {
       personInput.insertAdjacentElement("afterend", percentInput);
     }
 
+    // Add Task Button
     const addBtn = box.querySelector(".add-task-btn");
-    addBtn.onclick = () => {
+    addBtn.onclick = async () => {
       const quarter = getCurrentQuarter();
       const week = "Week 1";
 
@@ -465,28 +362,94 @@ function initWeeklyTaskInputs() {
         percent
       };
 
+      // Insert into structure
       if (!weeklyPlans[quarter]) weeklyPlans[quarter] = {};
       if (!weeklyPlans[quarter][week]) weeklyPlans[quarter][week] = {};
       if (!weeklyPlans[quarter][week][category]) weeklyPlans[quarter][week][category] = [];
 
       weeklyPlans[quarter][week][category].push(taskObj);
 
-      // persist locally and to Firestore
-      saveToStorage(STORAGE_KEYS.WEEKLY, weeklyPlans);
-      saveWeekly(quarter, weeklyPlans[quarter]);
+      // SAVE TO FIRESTORE
+      await saveFS("dashboard/weeklyPlans", weeklyPlans);
 
+      // Clear inputs
       titleInput.value = "";
       subtasksInput.value = "";
       percentInput.value = "";
 
+      // Reload UI
       loadWeeklyTasks(quarter);
       renderWeeklyResourcing(quarter);
     };
   });
 }
 
-// ---------------- Daily Updates ----------------
-dailyLogs = loadFromStorage(STORAGE_KEYS.DAILY, {});
+/********************************************
+ *  WEEKLY RESOURCING (auto-calculated)
+ ********************************************/
+function renderWeeklyResourcing(quarter, week = "Week 1") {
+  const container = document.getElementById("weekly-resourcing-grid");
+  if (!container) return;
+
+  const data = weeklyPlans[quarter]?.[week] || {};
+  const totals = {};
+  people.forEach(p => (totals[p] = {}));
+
+  // Sum percentages: person → category → %
+  categories.forEach(cat => {
+    const list = data[cat] || [];
+    list.forEach(task => {
+      if (!totals[task.person][cat]) totals[task.person][cat] = 0;
+      totals[task.person][cat] += task.percent;
+    });
+  });
+
+  // Build table
+  let html = `
+    <table class="weekly-resourcing-table">
+      <thead><tr><th>Person</th><th>Weekly Allocation</th></tr></thead>
+      <tbody>
+  `;
+
+  people.forEach(person => {
+    let segments = "";
+
+    categories.forEach((cat, i) => {
+      const val = totals[person][cat] || 0;
+      if (val > 0) {
+        segments += `
+          <div class="weekly-resourcing-segment palette-${i + 1}-bg"
+               style="width:${val}%;">
+               ${val > 10 ? val + "%" : ""}
+          </div>`;
+      }
+    });
+
+    const bar =
+      segments ||
+      `<div class="weekly-resourcing-segment empty-segment"
+            style="width:100%;background:#eee;color:#666;text-align:center;">
+            0%
+        </div>`;
+
+    html += `
+      <tr>
+        <td style="text-align:left;padding-left:10px;">${person}</td>
+        <td><div class="weekly-resourcing-row">${bar}</div></td>
+      </tr>
+    `;
+  });
+
+  html += "</tbody></table>";
+  container.innerHTML = html;
+}
+/********************************************
+ *  DAILY LOGS (UI + Firestore)
+ ********************************************/
+async function saveDailyLogsFS() {
+  // persist dailyLogs object to Firestore
+  await saveFS("dashboard/dailyLogs", dailyLogs);
+}
 
 function renderDailyBoxes() {
   const container = document.getElementById("daily-row");
@@ -515,121 +478,156 @@ function renderDailyBoxes() {
         <div class="muted small">${todayKey}</div>
       </div>
       <label>Yesterday's Update</label>
-      <div class="yesterday">${yesterdayUpdate}</div>
+      <div class="yesterday">${escapeHtml(yesterdayUpdate)}</div>
       <label>Today's Update</label>
-      <textarea class="today" data-name="${name}" placeholder="Write today's update...">${todayUpdate}</textarea>
+      <textarea class="today" data-name="${name}" placeholder="Write today's update...">${escapeHtml(todayUpdate)}</textarea>
     `;
     container.appendChild(box);
   });
 
+  // live-save today's updates to local object + Firestore
   container.querySelectorAll(".today").forEach(el => {
-    el.addEventListener("input", e => {
+    el.addEventListener("input", throttle(async (e) => {
       const name = e.target.dataset.name;
       const val = e.target.value;
-      if (!dailyLogs[todayKey]) dailyLogs[todayKey] = {};
-      if (!dailyLogs[todayKey][name]) dailyLogs[todayKey][name] = {};
-      dailyLogs[todayKey][name].today = val;
-      saveToStorage(STORAGE_KEYS.DAILY, dailyLogs);
-      saveDailyLogs(dailyLogs);
-    });
+      const todayKeyInner = new Date().toISOString().slice(0, 10);
+      if (!dailyLogs[todayKeyInner]) dailyLogs[todayKeyInner] = {};
+      if (!dailyLogs[todayKeyInner][name]) dailyLogs[todayKeyInner][name] = {};
+      dailyLogs[todayKeyInner][name].today = val;
+      // save locally and remotely (debounced/throttled)
+      saveToStorage("dailyLogs", dailyLogs);
+      await saveDailyLogsFS();
+    }, 600));
   });
 }
 
-// ---------------- Event Listeners ----------------
-document.getElementById('quarter-select').addEventListener('change', () => {
+/********************************************
+ *  SMALL HELPERS
+ ********************************************/
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+
+// simple throttle for input save
+function throttle(fn, wait) {
+  let last = 0;
+  let scheduled = null;
+  return function(...args) {
+    const now = Date.now();
+    if (now - last >= wait) {
+      last = now;
+      fn.apply(this, args);
+    } else {
+      if (scheduled) clearTimeout(scheduled);
+      scheduled = setTimeout(() => {
+        last = Date.now();
+        fn.apply(this, args);
+        scheduled = null;
+      }, wait - (now - last));
+    }
+  };
+}
+
+/********************************************
+ *  PROGRESS INPUT LISTENER (MILESTONES)
+ ********************************************/
+document.addEventListener("input", async (e) => {
+  if (e.target.classList.contains("progress-input")) {
+    const quarter = e.target.dataset.quarter;
+    const category = e.target.dataset.category;
+    const id = e.target.dataset.id;
+    const newValue = parseInt(e.target.value) || 0;
+    // update in-memory and Firestore
+    await updateMilestoneProgress(quarter, category, id, newValue);
+    // also persist locally for snappy UI
+    saveToStorage("milestonesData", milestonesData);
+  }
+});
+
+/********************************************
+ *  GLOBAL QUARTER SWITCH
+ ********************************************/
+document.getElementById('quarter-select').addEventListener('change', async () => {
   const q = getCurrentQuarter();
+
+  // try to hydrate this quarter's data from Firestore (non-blocking)
+  try {
+    const fsMilestones = await loadFS("dashboard/milestones", { Q1: {}, Q4: {} });
+    if (fsMilestones && fsMilestones[q]) milestonesData[q] = fsMilestones[q];
+  } catch (err) { /* ignore */ }
+
+  try {
+    const fsWeekly = await loadFS("dashboard/weeklyPlans", { Q1: {}, Q4: {} });
+    if (fsWeekly && fsWeekly[q]) weeklyPlans[q] = fsWeekly[q];
+  } catch (err) { /* ignore */ }
+
+  try {
+    const fsRes = await loadFS("dashboard/resourcing", { Q1: {}, Q4: {} });
+    if (fsRes && fsRes[q]) quarterlyResourcing[q] = fsRes[q];
+  } catch (err) { /* ignore */ }
+
   renderQuarterlyOverview(q);
   renderQuarterlyResourcing(q);
   loadWeeklyTasks(q);
   renderWeeklyResourcing(q);
+  renderDailyBoxes();
 });
 
-document.addEventListener("input", e => {
-  if (e.target.classList.contains("progress-input")) {
-    const quarter = e.target.dataset.quarter;
-    const id = e.target.dataset.id;
-    const newValue = parseInt(e.target.value) || 0;
-
-    for (const category of categories) {
-      const item = milestonesData[quarter]?.[category]?.find(m => m.id === id);
-      if (item) {
-        item.progress = newValue;
-        // persist
-        saveToStorage(STORAGE_KEYS.MILESTONES, milestonesData);
-        saveMilestones(quarter, milestonesData[quarter]);
-        break;
-      }
+/********************************************
+ *  INITIALIZATION: load Firestore & render UI
+ ********************************************/
+(async function initializeDashboard() {
+  // Attempt to load everything from Firestore (best-effort).
+  // If Firestore responds slowly/unavailable, fall back to localStorage data already present.
+  try {
+    const fsAll = await loadFS("dashboard/all", null);
+    if (fsAll) {
+      // If you prefer a single doc 'dashboard/all' you can use it; but keep compatibility:
+      // fallback to the individual collections if fsAll is null.
     }
+  } catch (err) {
+    // ignore
   }
-});
 
-// handle clicks on resourcing bar segments (single unified handler)
-document.addEventListener("click", e => {
-  if (e.target.closest(".res-edit-popup")) return;
-  const segment = e.target.closest(".res-bar-segment, .empty-segment");
-  if (segment) {
-    e.stopPropagation();
-    openResEditPopupForCell(segment);
-    return;
-  }
-  closeResEditPopup();
-});
-
-document.addEventListener("keydown", function(e) {
-  if (e.key === 'Escape') closeResEditPopup();
-});
-
-// ---------------- Initialize ----------------
-document.addEventListener("DOMContentLoaded", async () => {
-  // load local copies first for instant render
-  milestonesData = loadFromStorage(STORAGE_KEYS.MILESTONES, { Q4: {}, Q1: {} });
-  weeklyPlans = loadFromStorage(STORAGE_KEYS.WEEKLY, { Q4: {}, Q1: {} });
-  dailyLogs = loadFromStorage(STORAGE_KEYS.DAILY, {});
-
-  // also try to hydrate from Firestore in the background (non-blocking)
-  const q = getCurrentQuarter();
+  // Load per-collection data (non-blocking pattern)
   (async () => {
     try {
-      const fsMilestones = await loadFS(`milestones/${q}`, milestonesData[q] || {});
-      if (fsMilestones && Object.keys(fsMilestones).length) {
-        milestonesData[q] = fsMilestones;
-        saveToStorage(STORAGE_KEYS.MILESTONES, milestonesData);
-      }
+      const ms = await loadFS("dashboard/milestones", { Q1: {}, Q4: {} });
+      if (ms && Object.keys(ms).length) milestonesData = ms;
+      saveToStorage("milestonesData", milestonesData);
     } catch (err) { /* ignore */ }
 
     try {
-      const fsWeekly = await loadFS(`weekly/${q}`, weeklyPlans[q] || {});
-      if (fsWeekly && Object.keys(fsWeekly).length) {
-        weeklyPlans[q] = fsWeekly;
-        saveToStorage(STORAGE_KEYS.WEEKLY, weeklyPlans);
-      }
+      const wp = await loadFS("dashboard/weeklyPlans", { Q1: {}, Q4: {} });
+      if (wp && Object.keys(wp).length) weeklyPlans = wp;
+      saveToStorage("weeklyPlans", weeklyPlans);
     } catch (err) { /* ignore */ }
 
     try {
-      const fsDaily = await loadFS(`daily/logs`, dailyLogs || {});
-      if (fsDaily && Object.keys(fsDaily).length) {
-        dailyLogs = fsDaily;
-        saveToStorage(STORAGE_KEYS.DAILY, dailyLogs);
-      }
+      const dl = await loadFS("dashboard/dailyLogs", {});
+      if (dl && Object.keys(dl).length) dailyLogs = dl;
+      saveToStorage("dailyLogs", dailyLogs);
     } catch (err) { /* ignore */ }
 
     try {
-      const fsRes = await loadFS(`resourcing/${q}`, loadFromStorage(STORAGE_KEYS.RESOURCING, {})[q] || {});
-      if (fsRes && Object.keys(fsRes).length) {
-        const tmp = loadFromStorage(STORAGE_KEYS.RESOURCING, {});
-        tmp[q] = fsRes;
-        saveToStorage(STORAGE_KEYS.RESOURCING, tmp);
-      }
+      const rs = await loadFS("dashboard/resourcing", { Q1: {}, Q4: {} });
+      if (rs && Object.keys(rs).length) quarterlyResourcing = rs;
+      saveToStorage("resourcingData_v1", quarterlyResourcing);
     } catch (err) { /* ignore */ }
 
-    // re-render after Firestore hydation
+    // final render
+    const q = getCurrentQuarter();
     renderQuarterlyOverview(q);
     renderQuarterlyResourcing(q);
     loadWeeklyTasks(q);
     renderWeeklyResourcing(q);
+    initWeeklyTaskInputs();
+    renderDailyBoxes();
   })();
 
-  // initial render from local data (fast)
+  // immediate render from whatever local data exists for snappiness
+  const q = getCurrentQuarter();
   renderQuarterlyOverview(q);
   renderQuarterlyResourcing(q);
   loadWeeklyTasks(q);
@@ -637,7 +635,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   initWeeklyTaskInputs();
   renderDailyBoxes();
 
-  // still allow CSV loading (will overwrite current quarter's milestones)
+  // try loading CSV (optional)
   loadMilestonesCSV();
-});
-
+})();
