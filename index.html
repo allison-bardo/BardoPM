@@ -1,11 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bardo PM Dashboard</title>
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  
+  <!-- Firebase App (Core SDK) -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"></script>
+
+<!-- Firestore SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDUfnE-oYtu7la0ZxabPXYjEeQCJzG15Sw",
+    authDomain: "bardo-dashboard.firebaseapp.com",
+    projectId: "bardo-dashboard",
+    storageBucket: "bardo-dashboard.firebasestorage.app",
+    messagingSenderId: "864872286026",
+    appId: "1:864872286026:web:1aecf705db93b7ad2ea3b3"
+  };
+
+  // Initialize Firebase
+  const app = firebase.initializeApp(firebaseConfig);
+
+  // Initialize Firestore
+  const db = firebase.firestore();
+</script>
+<script src="script.js"></script>
 </head>
 
 <body>
