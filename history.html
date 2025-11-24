@@ -20,6 +20,39 @@
     };
     firebase.initializeApp(firebaseConfig);
   </script>
+<style>
+  .readable-history { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px; }
+  .history-card { padding: 20px; border-radius: 12px; background:#fafafa; box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+  .history-card h2 { margin-bottom: 10px; font-size: 1.3rem; border-bottom:1px solid #ddd; padding-bottom:6px; }
+  .history-block { padding: 12px; background:#fff; border-radius:8px; max-height:300px; overflow-y:auto; border:1px solid #eee; line-height:1.45; }
+  .history-block::-webkit-scrollbar { width: 6px; }
+  .history-block::-webkit-scrollbar-thumb { background:#bbb; border-radius:3px; }
+  @media(max-width:900px){ .readable-history { grid-template-columns:1fr; } }
+</style>
+<style>
+  .enhanced-history { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; padding: 22px; }
+  .history-card { border-radius: 14px; padding: 18px; background: #fafafa; box-shadow:0 3px 12px rgba(0,0,0,0.08); transition:0.3s; }
+  .history-card:hover { transform: translateY(-2px); }
+  .history-block { padding: 12px; background:#fff; border-radius:8px; max-height:340px; overflow-y:auto; border:1px solid #eee; line-height:1.45; }
+
+  /* Filters */
+  .history-filters { grid-column: 1 / -1; }
+  .filter-row { display:flex; gap:10px; }
+  .filter-row input, .filter-row select { padding:10px; border-radius:6px; border:1px solid #ccc; font-size:1rem; }
+
+  /* Collapsible sections */
+  .collapsible .collapse-header { cursor:pointer; padding:6px 0; border-bottom:1px solid #ddd; }
+  .collapse-content { display:none; margin-top:10px; }
+  .collapsible.open .collapse-content { display:block; }
+
+  /* Category colors */
+  [data-category="milestones"] h2 { color:#2a73ff; }
+  [data-category="weekly"] h2 { color:#c92aff; }
+  [data-category="resourcing"] h2 { color:#ff7a00; }
+  [data-category="daily"] h2 { color:#009c6b; }
+
+  @media(max-width:900px){ .enhanced-history { grid-template-columns: 1fr; } }
+</style>
 </head>
 <body>
   <header class="topbar">
@@ -34,27 +67,59 @@
     </div>
   </header>
 
-  <main class="history-layout readable-history">
-    <section class="card history-card">
-      <h2>Milestones History</h2>
-      <div id="milestones-history" class="history-block">Loading…</div>
+  <main class="history-layout enhanced-history">
+
+    <!-- Search & Filter Bar -->
+    <section class="history-filters card">
+      <h2>Filters</h2>
+      <div class="filter-row">
+        <input id="history-search" type="text" placeholder="Search history..." />
+        <select id="history-filter-person">
+          <option value="">Filter by person</option>
+          <option>Allison</option>
+          <option>Christian</option>
+          <option>Cyril</option>
+          <option>Mike</option>
+          <option>Ryszard</option>
+          <option>SamL</option>
+          <option>SamW</option>
+        </select>
+        <select id="history-filter-category">
+          <option value="">Filter by category</option>
+          <option>Materials</option>
+          <option>Fabrication</option>
+          <option>Durability</option>
+          <option>ScaleUp</option>
+          <option>Operations</option>
+        </select>
+      </div>
     </section>
 
-    <section class="card history-card">
-      <h2>Weekly Plans</h2>
-      <div id="weekly-history" class="history-block">Loading…</div>
+    <!-- Milestones History (Collapsible) -->
+    <section class="card history-card collapsible" data-category="milestones">
+      <h2 class="collapse-header">Milestones History</h2>
+      <div id="milestones-history" class="history-block collapse-content">Loading…</div>
     </section>
 
-    <section class="card history-card">
-      <h2>Quarterly Resourcing</h2>
-      <div id="resourcing-history" class="history-block">Loading…</div>
+    <!-- Weekly Plans History (Collapsible) -->
+    <section class="card history-card collapsible" data-category="weekly">
+      <h2 class="collapse-header">Weekly Plans</h2>
+      <div id="weekly-history" class="history-block collapse-content">Loading…</div>
     </section>
 
-    <section class="card history-card">
-      <h2>Daily Logs</h2>
-      <div id="daily-history" class="history-block">Loading…</div>
+    <!-- Quarterly Resourcing (Collapsible) -->
+    <section class="card history-card collapsible" data-category="resourcing">
+      <h2 class="collapse-header">Quarterly Resourcing</h2>
+      <div id="resourcing-history" class="history-block collapse-content">Loading…</div>
     </section>
-  </main>
+
+    <!-- Daily Logs (Collapsible) -->
+    <section class="card history-card collapsible" data-category="daily">
+      <h2 class="collapse-header">Daily Logs</h2>
+      <div id="daily-history" class="history-block collapse-content">Loading…</div>
+    </section>
+
+</main>
 
   <script src="history.js"></script>
 </body>
