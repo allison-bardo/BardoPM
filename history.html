@@ -2,58 +2,70 @@
 <html lang="en">
 <head>
   <!-- Firebase v8 CDN -->
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-<script>
-  // Firebase config
-  var firebaseConfig = {
-    apiKey: "AIzaSyDUfnE-oYtu7la0ZxabPXYjEeQCJzG15Sw",
-    authDomain: "bardo-dashboard.firebaseapp.com",
-    projectId: "bardo-dashboard",
-    storageBucket: "bardo-dashboard.firebasestorage.app",
-    messagingSenderId: "864872286026",
-    appId: "1:864872286026:web:1aecf705db93b7ad2ea3b3"
-  };
+  <script>
+    var firebaseConfig = {
+      apiKey: "AIzaSyDUfnE-oYtu7la0ZxabPXYjEeQCJzG15Sw",
+      authDomain: "bardo-dashboard.firebaseapp.com",
+      projectId: "bardo-dashboard",
+      storageBucket: "bardo-dashboard.firebasestorage.app",
+      messagingSenderId: "864872286026",
+      appId: "1:864872286026:web:1aecf705db93b7ad2ea3b3"
+    };
 
-  // Initialize Firebase
-  firebase.initializeApp(firebaseConfig);
+    firebase.initializeApp(firebaseConfig);
+    var db = firebase.firestore();
+  </script>
 
-  // Firestore reference
-  var db = firebase.firestore();
-</script>
-
-<!-- history.js must come AFTER firebase init -->
-<script src="history.js"></script>
+  <!-- only load ONCE -->
+  <script src="history.js"></script>
 
   <meta charset='utf-8' />
   <meta name='viewport' content='width=device-width,initial-scale=1' />
   <title>Dashboard History</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <header class="site-header">
     <h1>Dashboard History</h1>
-    <nav class="top-nav"><a href="index.html" class="nav-link">⬅ Back to Dashboard</a></nav>
+    <nav class="top-nav">
+      <a href="index.html" class="nav-link">⬅ Back to Dashboard</a>
+    </nav>
   </header>
+
   <main class="container">
+
+    <!-- FIXED IDs to match history.js -->
     <section class="card small">
-      <label for="history-quarter">Quarter</label>
-      <select id="history-quarter"></select>
-      <label for="history-week">Week (Monday)</label>
-      <select id="history-week"></select>
+      <label>Quarter</label>
+      <select id="history-quarter-select"></select>
+
+      <label>Week (Monday)</label>
+      <select id="history-week-select"></select>
+    </section>
+
+    <section class="card">
+      <h2>Milestones</h2>
+      <div id="milestones-history"></div>
     </section>
 
     <section class="card">
       <h2>Weekly Tasks</h2>
-      <div id="history-weekly"></div>
+      <div id="weekly-history"></div>
+    </section>
+
+    <section class="card">
+      <h2>Quarterly Resourcing</h2>
+      <div id="resourcing-history"></div>
     </section>
 
     <section class="card">
       <h2>Daily Updates</h2>
-      <div id="history-daily"></div>
+      <div id="daily-history"></div>
     </section>
   </main>
-  <script src="history.js"></script>
 </body>
 </html>
