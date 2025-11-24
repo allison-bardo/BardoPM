@@ -11,7 +11,7 @@ Q425,Fabrication,fab5,Sample-making training,Allison,Dec (2 weeks),Mike Christia
 Q425,Durability,dur1,Record 100h flow cell data on Bardo BPM,Allison,Oct 1 – Nov 15,Mike Allison Christian,0
 Q425,Durability,dur2,Retain 80% voltage after 100h,Allison,Nov 15 – Dec 15,TBD,0
 Q126,Durability,dur3,250 mA/cm² at 500h 60°C,Allison,Dec 1 – Mar 1,Christian Mike,0
-Q126,Durability,dur4,250 mA/cm² at 1,000h, 60°C,Allison,Mar 1 – Sep 1,Christian Mike,0
+Q126,Durability,dur4,250 mA/cm² at 1,000h 60°C,Allison,Mar 1 – Sep 1,Christian Mike,0
 Q425,Durability,dur5,1 A/cm² polarization curve with Bardo BPM,Allison,—,—,0
 Q126,ScaleUp,sc1,Identify R2R lamination vendors,Allison,Q126,Ryszard,0
 Q126,ScaleUp,sc2,Identify QC process,Allison,Q1,Ryszard,0
@@ -24,5 +24,6 @@ Q425,Operations,op4,Safe lab procedures,Allison,—,Allison,0
 Q425,Operations,op5,Lab reorganization,Allison,—,Allison,0
 Q425,Operations,op6,General project management,Allison,—,Allison,0
 Q425,Operations,op7,Birthday party 🎉,Allison,Oct 15,Full Team,100
+
 
 
