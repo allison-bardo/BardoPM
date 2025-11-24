@@ -351,63 +351,22 @@ body{
   color: #111;
   font-weight: 600;
 }
-.quarter-bar {
+
+#resourcing-row {
   display: flex;
-  height: 24px;
-  border-radius: 6px;
-  overflow: hidden;
-  background: #eee;
+  gap: 20px;
+  width: 100%;
+  margin-top: 20px;
 }
-
-.quarter-segment {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  color: white;
-  font-weight: 600;
+.resourcing-half {
+  flex: 1;
+  min-width: 0;
 }
-
-.quarter-segment.empty {
-  background: #ddd;
-  color: #555;
+.resourcing-half h2 {
+  text-align: center;
 }
-.res-edit-popup-fixed {
-  position: fixed;
-  top: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: white;
-  padding: 20px;
-  width: 360px;
-  border-radius: 12px;
-  box-shadow: 0px 4px 18px rgba(0,0,0,0.18);
-  z-index: 9999;
-}
-
-.popup-inner h3 {
-  margin-top: 0;
-  font-size: 18px;
-}
-
-.popup-people {
-  max-height: 260px;
-  overflow-y: auto;
-  margin-bottom: 12px;
-}
-
-.popup-row {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-
-.popup-row input {
-  width: 80px;
-}
-
-.popup-buttons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+.quarterly-resourcing-table,
+.weekly-resourcing-table {
+  width: 100%;
+  table-layout: fixed;
 }
