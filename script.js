@@ -470,13 +470,10 @@ if (quarterSelect) {
 // close popup on global click
 document.addEventListener('click',(e)=>{ if(e.target.closest('.res-edit-popup')) return; closeResourcingPopup(); });
 
-// ------- Initialization IIFE -------
+// ------- Initialization IIFE -------e
 (async function initializeDashboard(){
   // hydrate from FS (best-effort) into our dynamic structures
-  try{
-    const ms = await loadFS('dashboard/milestones', {});
-    if(ms && Object.keys(ms).length) { milestonesData = Object.assign({}, ms, milestonesData); saveToStorage(STORAGE_KEYS.MILESTONES, milestonesData); }
-  } catch(e){}
+ 
   try{
     const wp = await loadFS('dashboard/weeklyPlans', {});
     if(wp && Object.keys(wp).length) { weeklyPlans = Object.assign({}, wp, weeklyPlans); saveToStorage(STORAGE_KEYS.WEEKLY, weeklyPlans); }
@@ -507,4 +504,5 @@ document.addEventListener('click',(e)=>{ if(e.target.closest('.res-edit-popup'))
   // optional CSV import (will merge quarters and refresh select/render)
   loadMilestonesCSV('milestones.csv');
 })();
+
 
