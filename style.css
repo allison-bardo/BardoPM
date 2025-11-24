@@ -351,3 +351,24 @@ body{
   color: #111;
   font-weight: 600;
 }
+.quarter-bar {
+  display: flex;
+  height: 24px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #eee;
+}
+
+.quarter-segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: white;
+  font-weight: 600;
+}
+
+.quarter-segment.empty {
+  background: #ddd;
+  color: #555;
+}
