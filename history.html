@@ -1,236 +1,61 @@
-/********************************************
- *  FIRESTORE INIT
- ********************************************/
-var db = firebase.firestore();
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bardo PM Dashboard — History</title>
+  <link rel="stylesheet" href="style.css" />
 
-/********************************************
- *  CONSTANTS
- ********************************************/
-const QUARTERS = [
-  "Q425","Q126","Q226","Q326","Q426",
-  "Q127","Q227","Q327","Q427"
-];
+  <!-- Firebase v8 -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script>
+    var firebaseConfig = {
+      apiKey: "AIzaSyDUfnE-oYtu7la0ZxabPXYjEeQCJzG15Sw",
+      authDomain: "bardo-dashboard.firebaseapp.com",
+      projectId: "bardo-dashboard",
+      storageBucket: "bardo-dashboard.firebasestorage.app",
+      messagingSenderId: "864872286026",
+      appId: "1:864872286026:web:1aecf705db93b7ad2ea3b3"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>History</h1>
+    <div class="quarter-select-wrapper">
+      <label for="history-quarter-select">Quarter:</label>
+      <select id="history-quarter-select"></select>
+    </div>
+    <div class="week-select-wrapper">
+      <label for="history-week-select">Week:</label>
+      <select id="history-week-select"></select>
+    </div>
+  </header>
 
-/********************************************
- *  HELPERS
- ********************************************/
-const el = id => document.getElementById(id);
+  <main class="history-layout">
+    <section class="card">
+      <h2>Milestones History</h2>
+      <div id="milestones-history">Loading…</div>
+    </section>
 
-function escapeHtml(str) {
-  if (!str) return "";
-  return String(str)
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;");
-}
+    <section class="card">
+      <h2>Weekly Plans</h2>
+      <div id="weekly-history">Loading…</div>
+    </section>
 
-/********************************************
- *  LOAD QUARTER + WEEK DATA
- ********************************************/
-async function loadHistoryForQuarter(q) {
-  el("milestones-history").innerHTML = "Loading…";
-  el("weekly-history").innerHTML = "Loading…";
-  el("resourcing-history").innerHTML = "Loading…";
-  el("daily-history").innerHTML = "Loading…";
+    <section class="card">
+      <h2>Quarterly Resourcing</h2>
+      <div id="resourcing-history">Loading…</div>
+    </section>
 
-  try {
-    const msSnap = await db.doc("dashboard/milestones").get();
-    const wpSnap = await db.doc("dashboard/weeklyPlans").get();
-    const dlSnap = await db.doc("dashboard/dailyLogs").get();
-    const qrSnap = await db.doc("dashboard/resourcing").get();
+    <section class="card">
+      <h2>Daily Logs</h2>
+      <div id="daily-history">Loading…</div>
+    </section>
+  </main>
 
-    const msData = msSnap.exists ? msSnap.data() : {};
-    const wpData = wpSnap.exists ? wpSnap.data() : {};
-    const dailyData = dlSnap.exists ? dlSnap.data() : {};
-    const qrData = qrSnap.exists ? qrSnap.data() : {};
-
-    renderMilestonesHistory(q, msData);
-    renderWeeklyDropdown(q, wpData);
-    renderWeeklyHistory(q, wpData);
-    renderResourcingHistory(q, qrData);
-    renderDailyHistory(dailyData);
-
-  } catch (err) {
-    console.error(err);
-    el("milestones-history").innerHTML = "Error loading history.";
-  }
-}
-
-/********************************************
- *  MILESTONES HISTORY
- ********************************************/
-function renderMilestonesHistory(q, data) {
-  const container = el("milestones-history");
-  const qdata = data[q];
-
-  if (!qdata || Object.keys(qdata).length === 0) {
-    container.innerHTML = "<p>No milestones recorded for this quarter.</p>";
-    return;
-  }
-
-  let html = "";
-  Object.keys(qdata).forEach(cat => {
-    html += `<h3>${cat}</h3><ul>`;
-    qdata[cat].forEach(m => {
-      html += `<li>
-        <strong>${escapeHtml(m.title)}</strong><br>
-        Date: ${escapeHtml(m.date || "—")}<br>
-        Personnel: ${escapeHtml(m.people || "—")}<br>
-        Progress: ${m.progress || 0}%
-      </li>`;
-    });
-    html += "</ul>";
-  });
-
-  container.innerHTML = html;
-}
-
-/********************************************
- *  WEEKLY — POPULATE WEEK DROPDOWN
- ********************************************/
-function renderWeeklyDropdown(q, data) {
-  const weekSelect = el("history-week-select");
-  weekSelect.innerHTML = "";
-
-  const qdata = data[q];
-  if (!qdata) return;
-
-  // week keys = "2025-W46"
-  const weeks = Object.keys(qdata).sort();
-
-  weeks.forEach(w => {
-    const opt = document.createElement("option");
-    opt.value = w;
-    opt.textContent = w;
-    weekSelect.appendChild(opt);
-  });
-
-  if (weeks.length > 0) {
-    weekSelect.value = weeks[weeks.length - 1]; // latest week default
-  }
-}
-
-/********************************************
- *  WEEKLY HISTORY
- ********************************************/
-function renderWeeklyHistory(q, data) {
-  const container = el("weekly-history");
-  const weekSelect = el("history-week-select");
-  const selectedWeek = weekSelect.value;
-
-  const qdata = data[q];
-  if (!qdata || !qdata[selectedWeek]) {
-    container.innerHTML = "<p>No weekly plans saved for this week.</p>";
-    return;
-  }
-
-  const weekObj = qdata[selectedWeek];
-  let html = `<h3>${selectedWeek}</h3>`;
-
-  Object.keys(weekObj).forEach(cat => {
-    html += `<h4>${cat}</h4><ul>`;
-    weekObj[cat].forEach(t => {
-      html += `<li>
-        <strong>${escapeHtml(t.title)}</strong> — ${t.person} (${t.percent}%)
-        <div style="margin-left:12px">
-          ${t.subtasks.map(s => `<div>• ${escapeHtml(s)}</div>`).join("")}
-        </div>
-      </li>`;
-    });
-    html += "</ul>";
-  });
-
-  container.innerHTML = html;
-}
-
-/********************************************
- *  QUARTERLY RESOURCING HISTORY
- ********************************************/
-function renderResourcingHistory(q, data) {
-  const container = el("resourcing-history");
-  const qdata = data[q];
-
-  if (!qdata) {
-    container.innerHTML = "<p>No resourcing saved.</p>";
-    return;
-  }
-
-  let html = "";
-  Object.keys(qdata).forEach(cat => {
-    html += `<h3>${cat}</h3><ul>`;
-    Object.keys(qdata[cat]).forEach(person => {
-      html += `<li><strong>${person}:</strong> ${qdata[cat][person]}%</li>`;
-    });
-    html += "</ul>";
-  });
-
-  container.innerHTML = html;
-}
-
-/********************************************
- *  DAILY LOG HISTORY
- ********************************************/
-function renderDailyHistory(dailyData) {
-  const container = el("daily-history");
-
-  if (!dailyData || Object.keys(dailyData).length === 0) {
-    container.innerHTML = "<p>No daily logs saved.</p>";
-    return;
-  }
-
-  let html = "";
-
-  Object.keys(dailyData).sort().forEach(day => {
-    html += `<h3>${day}</h3><ul>`;
-    const people = dailyData[day];
-    Object.keys(people).forEach(name => {
-      html += `<li>
-        <strong>${name}</strong><br>
-        ${escapeHtml(people[name].today || "—")}
-      </li>`;
-    });
-    html += "</ul>";
-  });
-
-  container.innerHTML = html;
-}
-
-/********************************************
- *  POPULATE QUARTER SELECT
- ********************************************/
-function initQuarterSelect() {
-  const qsel = el("history-quarter-select");
-
-  QUARTERS.forEach(q => {
-    const opt = document.createElement("option");
-    opt.value = q;
-    opt.textContent = q;
-    qsel.appendChild(opt);
-  });
-
-  qsel.value = "Q425"; // default match dashboard
-}
-
-/********************************************
- *  EVENT LISTENERS
- ********************************************/
-document.getElementById("history-quarter-select").addEventListener("change", e => {
-  loadHistoryForQuarter(e.target.value);
-});
-
-document.getElementById("history-week-select").addEventListener("change", () => {
-  const q = el("history-quarter-select").value;
-
-  db.doc("dashboard/weeklyPlans")
-    .get()
-    .then(snap => {
-      const data = snap.exists ? snap.data() : {};
-      renderWeeklyHistory(q, data);
-    });
-});
-
-/********************************************
- *  INIT
- ********************************************/
-initQuarterSelect();
-loadHistoryForQuarter("Q425");
+  <script src="history.js"></script>
+</body>
+</html>
