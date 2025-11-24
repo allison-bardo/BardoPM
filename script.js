@@ -362,33 +362,60 @@ function closeResourcingPopup() {
 function renderQuarterlyResourcing(quarter) {
   if (!quarter) return;
   ensureQuarterResourcing(quarter);
-  const container = document.getElementById('resourcing-grid'); if (!container) return;
+
+  const container = document.getElementById('resourcing-grid');
+  if (!container) return;
+
   const data = quarterlyResourcing[quarter] || {};
 
-  let html = '<table class="quarterly-resourcing-table"><thead><tr><th>Person</th><th>Quarterly Allocation</th></tr></thead><tbody>';
+  let html = `
+    <table class="weekly-resourcing-table">
+      <thead>
+        <tr><th>Person</th><th>Quarterly Allocation</th></tr>
+      </thead>
+      <tbody>
+  `;
+
   people.forEach(person => {
     let segments = '';
-    categories.forEach((cat,i) => {
+
+    categories.forEach((cat, i) => {
       const val = data?.[cat]?.[person] || 0;
       if (val > 0) {
-        segments += `<div class="quarter-segment palette-${i+1}-bg" data-person="${person}" data-category="${cat}" style="width:${val}%">${val>10?val+'%':''}</div>`;
+        segments += `
+          <div class="weekly-resourcing-segment palette-${i+1}-bg"
+               style="width:${val}%;">
+            ${val > 10 ? val + '%' : ''}
+          </div>
+        `;
       }
     });
-    if (!segments) segments = `<div class="quarter-segment empty" style="width:100%">0%</div>`;
-    html += `<tr><td style="text-align:left;padding-left:10px;font-weight:600">${person}</td><td><div class="quarter-bar">${segments}</div></td></tr>`;
-  });
-  html += '</tbody></table>';
-  container.innerHTML = html;
 
-  container.querySelectorAll('.quarter-segment').forEach(seg => {
-    seg.addEventListener('click', (e)=>{
-      const cat = seg.dataset.category;
-      const q = getCurrentQuarter();
-      const first = milestonesData[q]?.[cat]?.[0];
-      if (first) openMilestoneResourcingPopup(q, cat, first.id);
-    });
+    if (!segments) {
+      segments = `
+        <div class="weekly-resourcing-segment empty-segment" style="width:100%">
+          0%
+        </div>
+      `;
+    }
+
+    html += `
+      <tr>
+        <td style="text-align:left;padding-left:10px;font-weight:600">${person}</td>
+        <td>
+          <div class="weekly-resourcing-row">
+            ${segments}
+          </div>
+        </td>
+      </tr>
+    `;
   });
+
+  html += '</tbody></table>';
+
+  container.innerHTML = html;
 }
+
 
 // ------- Weekly tasks and history (weekKey = Monday-start) -------
 function loadWeeklyTasks(quarter, weekKey) {
