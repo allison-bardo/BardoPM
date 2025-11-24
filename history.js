@@ -248,3 +248,50 @@ async function loadDailyHistory(quarter) {
 
 // (Removed erroneous leftover fragment)
 // File now ends cleanly.
+
+// ========== INIT + DROPDOWN FIXES ==========
+
+async function refreshAll() {
+  const qSel = document.getElementById("history-quarter-select");
+  const wSel = document.getElementById("history-week-select");
+
+  const quarter = qSel.value;
+  const week = wSel.value;
+
+  // Load history sections
+  loadMilestoneHistory(quarter, week);
+  loadWeeklyHistory(quarter, week);
+  loadResourcingHistory(quarter);
+  loadDailyHistory(quarter);
+
+  // Load charts
+  const weeklySnap = await db.doc("dashboard/weeklyPlans").get();
+  const weeklyData = weeklySnap.exists ? weeklySnap.data()[quarter]?.[week] : {};
+  buildWeeklyChart(weeklyData);
+
+  const resSnap = await db.doc("dashboard/resourcing").get();
+  const resData = resSnap.exists ? resSnap.data()[quarter] : {};
+  buildQuarterlyChart(resData);
+}
+
+// --------- FIX DROPDOWN POPULATION & EVENT WIRING ---------
+window.addEventListener('DOMContentLoaded', async () => {
+  await populateDropdowns();
+
+  const qSel = document.getElementById("history-quarter-select");
+  const wSel = document.getElementById("history-week-select");
+
+  // When quarter changes → refresh weeks + reload
+  qSel.addEventListener("change", async () => {
+    const newQ = qSel.value;
+    const weeks = await loadWeekKeys(newQ);
+    wSel.innerHTML = weeks.map(w => `<option>${w}</option>`).join("");
+    await refreshAll();
+  });
+
+  // When week changes → reload
+  wSel.addEventListener("change", refreshAll);
+
+  // Initial load
+  await refreshAll();
+});
