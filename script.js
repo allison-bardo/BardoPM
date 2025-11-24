@@ -45,6 +45,10 @@ async function saveFS(path, data) {
 function saveToStorage(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {} }
 function loadFromStorage(key, fallback) { try { const d = localStorage.getItem(key); return d ? JSON.parse(d) : fallback; } catch(e){ return fallback; } }
 
+function getCurrentQuarter() {
+  return document.getElementById("quarter-select").value;
+}
+
 // ------- Week helper (Monday-start week key) -------
 function getWeekKeyForDate(d = new Date()) {
   // compute ISO week with Monday start
@@ -383,3 +387,4 @@ document.addEventListener('click',(e)=>{ if(e.target.closest('.res-edit-popup'))
   loadMilestonesCSV();
 
 })();
+
