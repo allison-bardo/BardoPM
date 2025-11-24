@@ -189,16 +189,28 @@ function renderQuarterlyOverview(quarter) {
     });
 
     // attach click listeners for edit buttons
-    box.querySelectorAll('.edit-resourcing').forEach(btn => {
-      btn.removeEventListener('click', btn._resListener);
-      const handler = (e) => {
-        const id = btn.dataset.id; const cat = btn.dataset.category; const q = btn.dataset.quarter;
-        openMilestoneResourcingPopup(q, cat, id);
-      };
-      btn._resListener = handler;
-      btn.addEventListener('click', handler);
-    });
+// attach click listeners for edit buttons
+box.querySelectorAll('.edit-resourcing').forEach(btn => {
+  const handler = (e) => {
+    const id = btn.dataset.id; 
+    const cat = btn.dataset.category; 
+    const q = btn.dataset.quarter;
+    openMilestoneResourcingPopup(q, cat, id);
+  };
+
+  // remove old handler if any
+  btn.removeEventListener('click', btn._resListener);
+
+  // save reference
+  btn._resListener = handler;
+
+  // CLICK FIX: stop propagation so popup doesn't instantly close
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();   // ← CRITICAL FIX
+    handler(e);
   });
+});
+
 }
 
 // ------- Milestone resourcing parsing and computing -------
