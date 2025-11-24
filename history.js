@@ -1,83 +1,190 @@
-// History page script
-const HISTORY_KEYS = {
-  WEEKLY: 'weeklyPlans_v1',
-  DAILY: 'dailyLogs_v1',
-  RESOURCING: 'resourcing_v1'
-};
-const categories = ["Materials","Fabrication","Durability","ScaleUp","Operations"];
-const people = ["Allison","Christian","Cyril","Mike","Ryszard","SamL","SamW"];
+/********************************************
+ *  FIRESTORE (Firebase v8)
+ ********************************************/
+var db = firebase.firestore();
 
-function loadFromStorage(key, fallback){ const d = localStorage.getItem(key); return d?JSON.parse(d):fallback; }
+/********************************************
+ *  QUARTER LIST (full-year)
+ ********************************************/
+const ALL_QUARTERS = [
+  "Q125","Q225","Q325","Q425",
+  "Q126","Q226","Q326","Q426"
+];
 
-function getAvailableWeeks(){
-  const weekly = loadFromStorage(HISTORY_KEYS.WEEKLY, {Q4:{},Q1:{}});
-  const weeks = new Set();
-  ['Q4','Q1'].forEach(q=>{ Object.keys(weekly[q]||{}).forEach(wk=>weeks.add(wk)); });
-  const daily = loadFromStorage(HISTORY_KEYS.DAILY, {});
-  Object.keys(daily||{}).forEach(wk=>weeks.add(wk));
-  return [...weeks].sort();
+/********************************************
+ *  HELPERS
+ ********************************************/
+function el(id) {
+  return document.getElementById(id);
 }
 
-function populateSelectors(){
-  const qSel = document.getElementById('history-quarter');
-  qSel.innerHTML = '<option value="Q4">Q4</option><option value="Q1">Q1</option>';
-  const weeks = getAvailableWeeks();
-  const wSel = document.getElementById('history-week');
-  wSel.innerHTML = '<option value="">Select week (Monday)</option>' + weeks.map(w=>`<option value="${w}">${w}</option>`).join('');
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;");
 }
 
-function renderHistory(){
-  const quarter = document.getElementById('history-quarter').value;
-  const week = document.getElementById('history-week').value;
-  renderHistoryWeekly(quarter, week);
-  renderHistoryDaily(week);
+/********************************************
+ *  LOAD HISTORY FOR SELECTED QUARTER
+ ********************************************/
+async function loadQuarterHistory(q) {
+  el("milestones-history").innerHTML = "Loading…";
+  el("weekly-history").innerHTML = "Loading…";
+  el("daily-history").innerHTML = "Loading…";
+
+  try {
+    // Load milestones
+    const msSnap = await db.doc("dashboard/milestones").get();
+    const msData = msSnap.exists ? msSnap.data() : {};
+
+    // Load weekly
+    const wpSnap = await db.doc("dashboard/weeklyPlans").get();
+    const wpData = wpSnap.exists ? wpSnap.data() : {};
+
+    // Load daily
+    const dlSnap = await db.doc("dashboard/dailyLogs").get();
+    const dlData = dlSnap.exists ? dlSnap.data() : {};
+
+    // Load quarterly resourcing
+    const qrSnap = await db.doc("dashboard/resourcing").get();
+    const qrData = qrSnap.exists ? qrSnap.data() : {};
+
+    renderMilestonesHistory(q, msData);
+    renderWeeklyHistory(q, wpData);
+    renderResourcingHistory(q, qrData);
+    renderDailyHistory(dlData);
+
+  } catch (err) {
+    console.error(err);
+    el("milestones-history").innerHTML = "Error loading history.";
+  }
 }
 
-function renderHistoryWeekly(quarter, week){
-  const out = document.getElementById('history-weekly');
-  out.innerHTML = '';
-  if(!week) return out.innerHTML = '<p>Select a week to view tasks</p>';
-  const weekly = loadFromStorage(HISTORY_KEYS.WEEKLY, {Q4:{},Q1:{}});
-  const data = weekly[quarter] && weekly[quarter][week] ? weekly[quarter][week] : {};
-  categories.forEach(c=>{
-    const box = document.createElement('div'); box.className='card'; box.innerHTML=`<h3>${c}</h3>`;
-    const ul = document.createElement('ul');
-    (data[c]||[]).forEach(t=>{
-      const li = document.createElement('li');
-      li.innerHTML = `<strong>${t.title}</strong> ${t.person?`— ${t.person}`:''} ${t.percent?`(${t.percent}%)`:''}`;
-      if(t.subtasks && t.subtasks.length){
-        const sub = document.createElement('ul'); sub.className='subtask-list';
-        t.subtasks.forEach(s=>{ const sli = document.createElement('li'); sli.textContent = s; sub.appendChild(sli); });
-        li.appendChild(sub);
-      }
-      ul.appendChild(li);
+/********************************************
+ *  MILESTONES HISTORY
+ ********************************************/
+function renderMilestonesHistory(q, data) {
+  const container = el("milestones-history");
+  const qdata = data[q];
+  if (!qdata) {
+    container.innerHTML = "<p>No milestones recorded for this quarter.</p>";
+    return;
+  }
+
+  let html = "";
+  Object.keys(qdata).forEach(cat => {
+    html += `<h3>${cat}</h3><ul>`;
+    qdata[cat].forEach(m => {
+      html += `<li>
+        <strong>${escapeHtml(m.title)}</strong><br>
+        Date: ${escapeHtml(m.date || "—")}<br>
+        Personnel: ${escapeHtml(m.people || "—")}<br>
+        Progress: ${m.progress}%
+      </li>`;
     });
-    box.appendChild(ul); out.appendChild(box);
+    html += "</ul>";
   });
+
+  container.innerHTML = html;
 }
 
-function renderHistoryDaily(week){
-  const out = document.getElementById('history-daily');
-  out.innerHTML = '';
-  if(!week) return out.innerHTML = '<p>Select a week to view daily logs</p>';
-  const daily = loadFromStorage(HISTORY_KEYS.DAILY, {});
-  const wk = daily[week] || {};
-  const dates = Object.keys(wk).sort();
-  dates.forEach(d=>{
-    const card = document.createElement('div'); card.className='card'; card.innerHTML = `<h3>${d}</h3>`;
-    people.forEach(p=>{
-      const entry = (wk[d] && wk[d][p]) ? (wk[d][p].today||'') : '';
-      const pdiv = document.createElement('div'); pdiv.innerHTML = `<strong>${p}</strong>: ${escapeHtml(entry)}`;
-      card.appendChild(pdiv);
+/********************************************
+ *  WEEKLY HISTORY (SNAPSHOTS)
+ ********************************************/
+function renderWeeklyHistory(q, data) {
+  const container = el("weekly-history");
+  const qdata = data[q];
+  if (!qdata) {
+    container.innerHTML = "<p>No weekly plans saved.</p>";
+    return;
+  }
+
+  let html = "";
+  Object.keys(qdata).forEach(week => {
+    html += `<h3>${week}</h3>`;
+
+    const weekObj = qdata[week];
+    Object.keys(weekObj).forEach(cat => {
+      html += `<h4>${cat}</h4><ul>`;
+      weekObj[cat].forEach(t => {
+        html += `<li>
+          <strong>${escapeHtml(t.title)}</strong> — ${t.person} (${t.percent}%)
+          <div style="margin-left:12px">
+            ${t.subtasks.map(s => `<div>• ${escapeHtml(s)}</div>`).join("")}
+          </div>
+        </li>`;
+      });
+      html += "</ul>";
     });
-    out.appendChild(card);
   });
+
+  container.innerHTML = html;
 }
 
-function escapeHtml(str){ if(!str) return ''; return (''+str).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+/********************************************
+ *  QUARTERLY RESOURCING HISTORY
+ ********************************************/
+function renderResourcingHistory(q, data) {
+  const container = el("resourcing-history");
+  const qdata = data[q];
+  if (!qdata) {
+    container.innerHTML = "<p>No quarterly resourcing saved.</p>";
+    return;
+  }
 
-document.addEventListener('DOMContentLoaded', ()=>{
-  populateSelectors();
-  document.getElementById('history-quarter').addEventListener('change', renderHistory);
-  document.getElementById('history-week').addEventListener('change', renderHistory);
+  let html = "";
+
+  Object.keys(qdata).forEach(cat => {
+    html += `<h3>${cat}</h3><ul>`;
+    Object.keys(qdata[cat]).forEach(person => {
+      const val = qdata[cat][person];
+      html += `<li><strong>${person}:</strong> ${val}%</li>`;
+    });
+    html += "</ul>";
+  });
+
+  container.innerHTML = html;
+}
+
+/********************************************
+ *  DAILY HISTORY
+ ********************************************/
+function renderDailyHistory(dailyData) {
+  const container = el("daily-history");
+
+  if (!dailyData || Object.keys(dailyData).length === 0) {
+    container.innerHTML = "<p>No daily logs saved.</p>";
+    return;
+  }
+
+  let html = "";
+
+  Object.keys(dailyData).sort().forEach(day => {
+    html += `<h3>${day}</h3><ul>`;
+    const people = dailyData[day];
+    Object.keys(people).forEach(name => {
+      html += `<li>
+        <strong>${name}</strong><br>
+        ${escapeHtml(people[name].today || "—")}
+      </li>`;
+    });
+    html += "</ul>";
+  });
+
+  container.innerHTML = html;
+}
+
+/********************************************
+ *  QUARTER SELECT
+ ********************************************/
+document.getElementById("history-quarter-select").addEventListener("change", e => {
+  const q = e.target.value;
+  loadQuarterHistory(q);
 });
+
+/********************************************
+ *  INIT DEFAULT LOAD
+ ********************************************/
+loadQuarterHistory("Q425");
