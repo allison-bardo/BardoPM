@@ -1,240 +1,238 @@
-/********************************************
- *  FIRESTORE INIT
- ********************************************/
-var db = firebase.firestore();
+// ========== History.js with ApexCharts Resourcing Comparison ==========
 
-/********************************************
- *  HELPERS
- ********************************************/
-const el = id => document.getElementById(id);
+// ---------------- Firestore ----------------
+const db = firebase.firestore();
 
+// --------- Utility ---------
 function escapeHtml(str) {
   if (!str) return "";
   return String(str)
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;");
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
-/********************************************
- *  FETCH and RENDER
- ********************************************/
-async function getAllSourceQuarters() {
-  const quarters = new Set();
-  try {
-    const msSnap = await db.doc("dashboard/milestones").get();
-    if (msSnap.exists) Object.keys(msSnap.data()).forEach(k=>quarters.add(k));
-  } catch(e){}
-  try {
-    const wpSnap = await db.doc("dashboard/weeklyPlans").get();
-    if (wpSnap.exists) Object.keys(wpSnap.data()).forEach(k=>quarters.add(k));
-  } catch(e){}
-  try {
-    const rsSnap = await db.doc("dashboard/resourcing").get();
-    if (rsSnap.exists) Object.keys(rsSnap.data()).forEach(k=>quarters.add(k));
-  } catch(e){}
-  if (quarters.size === 0) { ["Q425","Q126","Q226","Q326","Q426"].forEach(q=>quarters.add(q)); }
-  return Array.from(quarters).sort();
+function sortWeeks(weeks) {
+  return weeks.sort((a,b) => (a > b ? -1 : 1));
 }
 
-async function loadHistoryForQuarter(q) {
-  el("milestones-history").innerHTML = "Loading…";
-  el("weekly-history").innerHTML = "Loading…";
-  el("resourcing-history").innerHTML = "Loading…";
-  el("daily-history").innerHTML = "Loading…";
+// --------- Chart Globals ---------
+const CATEGORY_COLORS = {
+  Materials:   "#4b8df8",
+  Fabrication: "#d84bf8",
+  Durability:  "#50c878",
+  ScaleUp:     "#f4b400",
+  Operations:  "#ff6f61"
+};
 
-  try {
-    const [msSnap, wpSnap, dlSnap, qrSnap] = await Promise.all([
-      db.doc("dashboard/milestones").get(),
-      db.doc("dashboard/weeklyPlans").get(),
-      db.doc("dashboard/dailyLogs").get(),
-      db.doc("dashboard/resourcing").get()
-    ]);
-    const msData = msSnap.exists ? msSnap.data() : {};
-    const wpData = wpSnap.exists ? wpSnap.data() : {};
-    const dlData = dlSnap.exists ? dlSnap.data() : {};
-    const qrData = qrSnap.exists ? qrSnap.data() : {};
+const categories = ["Materials", "Fabrication", "Durability", "ScaleUp", "Operations"];
+const people = ["Allison","Christian","Cyril","Mike","Ryszard","SamL","SamW"];
 
-    renderMilestonesHistory(q, msData);
-    renderWeeklyDropdown(q, wpData);
-    renderWeeklyHistory(q, wpData);
-    renderResourcingHistory(q, qrData);
-    renderDailyHistory(dlData);
+let quarterChart = null;
+let weeklyChart = null;
 
-  } catch (err) {
-    console.error(err);
-    el("milestones-history").innerHTML = "Error loading history.";
+// --------- Quarter Keys ---------
+async function loadQuarterKeys() {
+  const snap = await db.doc("dashboard/weeklyPlans").get();
+  if (!snap.exists) return [];
+  return Object.keys(snap.data() || {});
+}
+
+async function loadWeekKeys(quarter) {
+  const snap = await db.doc("dashboard/weeklyPlans").get();
+  if (!snap.exists) return [];
+  const data = snap.data()[quarter] || {};
+  return sortWeeks(Object.keys(data));
+}
+
+// --------- Dropdowns ---------
+async function populateDropdowns() {
+  const qSel = document.getElementById("history-quarter-select");
+  const wSel = document.getElementById("history-week-select");
+
+  const quarters = await loadQuarterKeys();
+  qSel.innerHTML = quarters.map(q => `<option>${q}</option>`).join("");
+
+  const firstQ = quarters[quarters.length - 1];
+  const weeks = await loadWeekKeys(firstQ);
+  wSel.innerHTML = weeks.map(w => `<option>${w}</option>`).join("");
+}
+
+// --------- HISTORY SECTIONS ---------
+
+// ---- Milestones History ----
+async function loadMilestoneHistory(quarter, weekKey) {
+  const out = document.getElementById("milestones-history");
+  out.innerHTML = "Loading…";
+
+  const histSnap = await db.doc("dashboard/history/weeks").get();
+  if (!histSnap.exists) {
+    out.innerHTML = "No milestone history found.";
+    return;
   }
-}
 
-/********************************************
- *  MILESTONES HISTORY
- ********************************************/
-function renderMilestonesHistory(q, data) {
-  const container = el("milestones-history");
-  const qdata = data[q] || {};
-
-  if (!qdata || Object.keys(qdata).length === 0) {
-    container.innerHTML = "<p>No milestones recorded for this quarter.</p>";
+  const hist = histSnap.data() || {};
+  const weekObj = hist[weekKey];
+  if (!weekObj || !weekObj.data) {
+    out.innerHTML = "No milestone entries for this week.";
     return;
   }
 
   let html = "";
-  Object.keys(qdata).forEach(cat => {
+  const data = weekObj.data;
+
+  Object.keys(data).forEach(cat => {
     html += `<h3>${cat}</h3><ul>`;
-    (qdata[cat] || []).forEach(m => {
-      html += `<li>
-        <strong>${escapeHtml(m.title)}</strong><br>
-        Date: ${escapeHtml(m.date || "—")}<br>
-        Personnel: ${escapeHtml(m.people || "—")}<br>
-        Progress: ${m.progress || 0}%
-      </li>`;
+    (data[cat] || []).forEach(m => {
+      html += `<li><strong>${escapeHtml(m.title)}</strong> — ${escapeHtml(m.person || "")}</li>`;
     });
     html += "</ul>";
   });
 
-  container.innerHTML = html;
+  out.innerHTML = html || "No data.";
 }
 
-/********************************************
- *  WEEKLY — POPULATE WEEK DROPDOWN
- ********************************************/
-function renderWeeklyDropdown(q, data) {
-  const weekSelect = el("history-week-select");
-  weekSelect.innerHTML = "";
+// ---- Weekly Tasks ----
+async function loadWeeklyHistory(quarter, weekKey) {
+  const out = document.getElementById("weekly-history");
+  out.innerHTML = "Loading…";
 
-  const qdata = data[q] || {};
-  const weeks = Object.keys(qdata).sort();
-
-  weeks.forEach(w => {
-    const opt = document.createElement("option");
-    opt.value = w;
-    opt.textContent = w;
-    weekSelect.appendChild(opt);
-  });
-
-  if (weeks.length > 0) {
-    weekSelect.value = weeks[weeks.length - 1]; // latest week default
-  }
-}
-
-/********************************************
- *  WEEKLY HISTORY
- ********************************************/
-function renderWeeklyHistory(q, data) {
-  const container = el("weekly-history");
-  const weekSelect = el("history-week-select");
-  const selectedWeek = weekSelect.value;
-
-  const qdata = data[q] || {};
-  if (!qdata || !qdata[selectedWeek]) {
-    container.innerHTML = "<p>No weekly plans saved for this week.</p>";
+  const snap = await db.doc("dashboard/weeklyPlans").get();
+  if (!snap.exists) {
+    out.innerHTML = "No weekly data found.";
     return;
   }
 
-  const weekObj = qdata[selectedWeek];
-  let html = `<h3>${selectedWeek}</h3>`;
-
-  Object.keys(weekObj).forEach(cat => {
-    html += `<h4>${cat}</h4><ul>`;
-    (weekObj[cat] || []).forEach(t => {
-      html += `<li>
-        <strong>${escapeHtml(t.title)}</strong> — ${escapeHtml(t.person)} (${t.percent}%)
-        <div style="margin-left:12px">
-          ${ (t.subtasks||[]).map(s => `<div>• ${escapeHtml(s)}</div>`).join("") }
-        </div>
-      </li>`;
-    });
-    html += "</ul>";
-  });
-
-  container.innerHTML = html;
-}
-
-/********************************************
- *  QUARTERLY RESOURCING HISTORY
- ********************************************/
-function renderResourcingHistory(q, data) {
-  const container = el("resourcing-history");
-  const qdata = data[q] || {};
-
-  if (!qdata || Object.keys(qdata).length === 0) {
-    container.innerHTML = "<p>No resourcing saved.</p>";
-    return;
-  }
-
+  const data = snap.data()[quarter]?.[weekKey] || {};
   let html = "";
-  Object.keys(qdata).forEach(cat => {
+
+  Object.keys(data).forEach(cat => {
     html += `<h3>${cat}</h3><ul>`;
-    Object.keys(qdata[cat] || {}).forEach(person => {
-      html += `<li><strong>${person}:</strong> ${qdata[cat][person]}%</li>`;
+    data[cat].forEach(task => {
+      html += `<li><strong>${escapeHtml(task.title)}</strong> — ${escapeHtml(task.person || "")} (${task.percent}%)</li>`;
     });
     html += "</ul>";
   });
 
-  container.innerHTML = html;
+  out.innerHTML = html || "No weekly tasks.";
 }
 
-/********************************************
- *  DAILY LOG HISTORY
- ********************************************/
-function renderDailyHistory(dailyData) {
-  const container = el("daily-history");
+// ---- Quarterly Resourcing Chart ----
+function buildQuarterlyChart(resourcingData) {
+  if (!resourcingData) resourcingData = {};
 
-  if (!dailyData || Object.keys(dailyData).length === 0) {
-    container.innerHTML = "<p>No daily logs saved.</p>";
+  const series = categories.map(cat => ({
+    name: cat,
+    data: people.map(p => resourcingData?.[cat]?.[p] || 0),
+    color: CATEGORY_COLORS[cat]
+  }));
+
+  const options = {
+    chart: { type: 'bar', height: 380, stacked: true },
+    plotOptions: { bar: { horizontal: true, barHeight: "60%" } },
+    series,
+    xaxis: { categories: people },
+    legend: { position: 'bottom' }
+  };
+
+  if (quarterChart) quarterChart.destroy();
+
+  quarterChart = new ApexCharts(
+    document.querySelector("#quarterly-resourcing-chart"),
+    options
+  );
+
+  quarterChart.render();
+}
+
+// ---- Weekly Resourcing Aggregation ----
+function computeWeeklyResourcing(weekData) {
+  const totals = {};
+  people.forEach(p => totals[p] = {
+    Materials:0, Fabrication:0, Durability:0, ScaleUp:0, Operations:0
+  });
+
+  if (!weekData) return totals;
+
+  Object.keys(weekData).forEach(cat => {
+    weekData[cat].forEach(task => {
+      const p = task.person;
+      const percent = task.percent || 0;
+      if (totals[p]) totals[p][cat] += percent;
+    });
+  });
+
+  return totals;
+}
+
+// ---- Weekly Chart ----
+function buildWeeklyChart(weeklyData) {
+  const data = computeWeeklyResourcing(weeklyData);
+
+  const series = categories.map(cat => ({
+    name: cat,
+    data: people.map(p => data[p][cat] || 0),
+    color: CATEGORY_COLORS[cat]
+  }));
+
+  const options = {
+    chart: { type: 'bar', height: 380, stacked: true },
+    plotOptions: { bar: { horizontal: true, barHeight: "60%" } },
+    series,
+    xaxis: { categories: people },
+    legend: { position: 'bottom' }
+  };
+
+  if (weeklyChart) weeklyChart.destroy();
+
+  weeklyChart = new ApexCharts(
+    document.querySelector("#weekly-resourcing-chart"),
+    options
+  );
+
+  weeklyChart.render();
+}
+
+// ---- Quarterly Resourcing Text History ----
+async function loadResourcingHistory(quarter) {
+  const out = document.getElementById("resourcing-history");
+  out.innerHTML = "Loading…";
+
+  const snap = await db.doc("dashboard/resourcing").get();
+  if (!snap.exists) {
+    out.innerHTML = "No resourcing data.";
     return;
   }
 
+  const data = snap.data()[quarter] || {};
   let html = "";
 
-  Object.keys(dailyData).sort().forEach(day => {
-    html += `<h3>${day}</h3><ul>`;
-    const people = dailyData[day] || {};
-    Object.keys(people).forEach(name => {
-      html += `<li>
-        <strong>${name}</strong><br>
-        ${escapeHtml((people[name] && people[name].today) || "—")}
-      </li>`;
+  Object.keys(data).forEach(cat => {
+    html += `<h3>${cat}</h3><ul>`;
+    Object.keys(data[cat] || {}).forEach(person => {
+      const amt = data[cat][person];
+      if (amt > 0) html += `<li>${person}: ${amt}%</li>`;
     });
     html += "</ul>";
   });
 
-  container.innerHTML = html;
+  out.innerHTML = html || "No resourcing.";
 }
 
-/********************************************
- *  QUARTER SELECT (auto-populate) + listeners
- ********************************************/
-async function initQuarterSelect() {
-  const qsel = el("history-quarter-select");
-  qsel.innerHTML = "";
+// ---- Daily Logs ----
+async function loadDailyHistory(quarter) {
+  const out = document.getElementById("daily-history");
+  out.innerHTML = "Loading…";
 
-  const quarters = await getAllSourceQuarters();
-  quarters.forEach(q => {
-    const opt = document.createElement("option");
-    opt.value = q;
-    opt.textContent = q;
-    qsel.appendChild(opt);
-  });
+  const snap = await db.doc("dashboard/dailyLogs").get();
+  if (!snap.exists) {
+    out.innerHTML = "No daily logs.";
+    return;
+  }
 
-  qsel.value = quarters[quarters.length - 1];
+  const logs = snap.data() || {};
+  let html = "";
 
-  qsel.addEventListener('change', (e) => {
-    loadHistoryForQuarter(e.target.value);
-  });
-
-  // hook week select change
-  el("history-week-select").addEventListener("change", () => {
-    const q = el("history-quarter-select").value;
-    loadHistoryForQuarter(q);
-  });
-
-  // initial load
-  loadHistoryForQuarter(qsel.value);
-}
-
-/********************************************
- *  INIT
- ********************************************/
-initQuarterSelect();
+  Object.keys(logs).forEach(date => {
+    html += `<h3>${date}</h3><ul>`;
+    Object.keys(logs[date]).
