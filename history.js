@@ -235,4 +235,15 @@ async function loadDailyHistory(quarter) {
 
   Object.keys(logs).forEach(date => {
     html += `<h3>${date}</h3><ul>`;
+    Object.keys(logs[date] || {}).forEach(person => {
+      const entry = logs[date][person];
+      if (!entry) return;
+      html += `<li><strong>${escapeHtml(person)}</strong>: ${escapeHtml(entry)}</li>`;
+    });
+    html += `</ul>`;
+  });
+
+  out.innerHTML = html || "No daily logs.";
+}.forEach(date => {
+    html += `<h3>${date}</h3><ul>`;
     Object.keys(logs[date]).
