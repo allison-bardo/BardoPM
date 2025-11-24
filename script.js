@@ -325,7 +325,13 @@ function openMilestoneResourcingPopup(quarter, category, milestoneId) {
 }
 
 
-function closeResourcingPopup(){ const old = document.querySelector('.res-edit-popup'); if (old) old.remove(); }
+function closeResourcingPopup() {
+  const old1 = document.querySelector('.res-edit-popup');
+  const old2 = document.querySelector('.res-edit-popup-fixed');
+  if (old1) old1.remove();
+  if (old2) old2.remove();
+}
+
 
 // ------- Render quarterly resourcing (one row per person, stacked segments) -------
 function renderQuarterlyResourcing(quarter) {
@@ -450,7 +456,14 @@ if (quarterSelectEl) {
 }
 
 // global click to close popups
-document.addEventListener('click',(e)=>{ if(e.target.closest('.res-edit-popup')) return; closeResourcingPopup(); });
+document.addEventListener('click', (e) => {
+  // allow clicks inside either popup style
+  if (e.target.closest('.res-edit-popup') || e.target.closest('.res-edit-popup-fixed')) {
+    return;
+  }
+  closeResourcingPopup();
+});
+
 
 // ------- Initialization IIFE -------
 (async function initializeDashboard(){
