@@ -259,57 +259,71 @@ function computeQuarterlyFromMilestones(quarter) {
 // ------- Milestone resourcing popup -------
 function openMilestoneResourcingPopup(quarter, category, milestoneId) {
   closeResourcingPopup();
-  const mil = (milestonesData[quarter] && milestonesData[quarter][category]) ? milestonesData[quarter][category].find(x => x.id === milestoneId) : null;
-  if (!mil) return alert('Milestone not found');
 
-  const popup = document.createElement('div'); popup.className = 'res-edit-popup';
-  let html = `<h4>Edit Resourcing — ${escapeHtml(mil.title)}</h4><div style="display:flex;flex-direction:column;gap:8px;">`;
-  people.forEach(p => {
-    const allocs = parseAllocations(mil.resourcing || mil.people || '');
-    const found = allocs.find(a=>a.person===p);
-    const val = found ? found.percent : 0;
-    html += `\
-      <div style="display:flex;align-items:center;gap:8px;">\
-        <div style="width:120px;font-weight:600">${escapeHtml(p)}</div>\
-        <input type=number min=0 max=100 value="${val}" data-person="${escapeHtml(p)}" class="popup-num" style="width:80px;padding:6px;border-radius:6px;border:1px solid rgba(0,0,0,0.08)">\
-      </div>`;
-  });
-  html += `</div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">\
-           <button class="cancel-res">Cancel</button>\
-           <button class="save-res">Save</button>\
-           </div>`;
-
-  popup.innerHTML = html; document.body.appendChild(popup);
-
-  const box = document.getElementById(`${category.toLowerCase()}-box`);
-  if (box) {
-    const rect = box.getBoundingClientRect();
-    popup.style.left = Math.min(rect.left + window.scrollX + 10, window.innerWidth - 340) + 'px';
-    popup.style.top = (rect.bottom + window.scrollY + 8) + 'px';
-    popup.style.width = '320px';
+  const mil = milestonesData[quarter]?.[category]?.find(x => x.id === milestoneId);
+  if (!mil) {
+    console.error("Milestone not found:", quarter, category, milestoneId);
+    return;
   }
 
-  popup.querySelector('.cancel-res').addEventListener('click', closeResourcingPopup);
-  popup.querySelector('.save-res').addEventListener('click', async () => {
+  const popup = document.createElement('div');
+  popup.className = 'res-edit-popup-fixed';
+
+  let html = `
+    <div class="popup-inner">
+      <h3>Edit Resourcing — ${escapeHtml(mil.title)}</h3>
+      <div class="popup-people">
+  `;
+
+  people.forEach(person => {
+    const allocs = parseAllocations(mil.resourcing || mil.people || '');
+    const found = allocs.find(a => a.person === person);
+    const val = found ? found.percent : 0;
+
+    html += `
+      <div class="popup-row">
+        <span class="popup-person">${person}</span>
+        <input type="number" data-person="${person}" min="0" max="100" value="${val}">
+      </div>
+    `;
+  });
+
+  html += `
+      </div>
+      <div class="popup-buttons">
+        <button class="popup-cancel">Cancel</button>
+        <button class="popup-save">Save</button>
+      </div>
+    </div>
+  `;
+
+  popup.innerHTML = html;
+  document.body.appendChild(popup);
+
+  // --- Button logic ---
+  popup.querySelector('.popup-cancel').onclick = closeResourcingPopup;
+
+  popup.querySelector('.popup-save').onclick = async () => {
     const updated = [];
-    popup.querySelectorAll('.popup-num').forEach(inp => {
-      const person = inp.dataset.person;
-      const pct = parseInt(inp.value) || 0;
+
+    popup.querySelectorAll('input[data-person]').forEach(input => {
+      const person = input.dataset.person;
+      const pct = parseInt(input.value) || 0;
       if (pct > 0) updated.push(`${person}:${pct}`);
     });
 
     mil.resourcing = updated.join(';');
-
-    // persist only resourcing + milestones to storage and serve to Firestore
     saveToStorage(STORAGE_KEYS.MILESTONES, milestonesData);
-    try { await saveFS('dashboard/milestones', milestonesData); } catch(e){ console.warn('save milestone failed', e); }
+    await saveFS("dashboard/milestones", milestonesData);
 
     computeQuarterlyFromMilestones(quarter);
     renderQuarterlyResourcing(quarter);
     renderQuarterlyOverview(quarter);
+
     closeResourcingPopup();
-  });
+  };
 }
+
 
 function closeResourcingPopup(){ const old = document.querySelector('.res-edit-popup'); if (old) old.remove(); }
 
