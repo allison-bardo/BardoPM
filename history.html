@@ -53,6 +53,37 @@
 
   @media(max-width:900px){ .enhanced-history { grid-template-columns: 1fr; } }
 </style>
+<style>
+  .enhanced-history { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; padding: 22px; }
+  .history-card { border-radius: 14px; padding: 18px; background: #fafafa; box-shadow:0 3px 12px rgba(0,0,0,0.08); transition:0.3s; }
+  .history-card:hover { transform: translateY(-2px); }
+  .history-block { padding: 12px; background:#fff; border-radius:8px; max-height:340px; overflow-y:auto; border:1px solid #eee; line-height:1.45; }
+
+  /* Filters */
+  .history-filters { grid-column: 1 / -1; }
+  .filter-row { display:flex; gap:10px; }
+  .filter-row input, .filter-row select { padding:10px; border-radius:6px; border:1px solid #ccc; font-size:1rem; }
+
+  /* Collapsible sections */
+  .collapsible .collapse-header { cursor:pointer; padding:6px 0; border-bottom:1px solid #ddd; }
+  .collapse-content { display:none; margin-top:10px; }
+  .collapsible.open .collapse-content { display:block !important; }
+
+  /* Category colors */
+  [data-category="milestones"] h2 { color:#2a73ff; }
+  [data-category="weekly"] h2 { color:#c92aff; }
+  [data-category="resourcing"] h2 { color:#ff7a00; }
+  [data-category="daily"] h2 { color:#009c6b; }
+
+  @media(max-width:900px){ .enhanced-history { grid-template-columns: 1fr; } }
+</style>
+
+<script>
+// Expand all collapsible sections on load
+window.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.collapsible').forEach(sec => sec.classList.add('open'));
+});
+</script>
 </head>
 <body>
   <header class="topbar">
