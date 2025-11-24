@@ -165,6 +165,7 @@ function loadMilestonesCSV(csvPath = 'milestones.csv') {
 // ------- Render Milestones -------
 function renderQuarterlyOverview(quarter) {
   if (!quarter) return;
+
   if (!milestonesData[quarter]) {
     milestonesData[quarter] = {};
     categories.forEach(c => milestonesData[quarter][c] = []);
@@ -173,45 +174,57 @@ function renderQuarterlyOverview(quarter) {
   categories.forEach(category => {
     const box = document.querySelector(`#${category.toLowerCase()}-box .milestone-entries`);
     if (!box) return;
+
     box.innerHTML = '';
     const items = milestonesData[quarter]?.[category] || [];
+
     items.forEach(m => {
       const entry = document.createElement('div');
       entry.className = 'milestone-entry';
-      entry.innerHTML = `\
-        <strong>${escapeHtml(m.title)}</strong><br>\
-        <em>${escapeHtml(m.date || '')}</em><br>\
-        Personnel: ${escapeHtml(m.people || '')}<br>\
-        Progress: <input type="number" min="0" max="100" value="${m.progress}" data-id="${m.id}" data-quarter="${quarter}" data-category="${category}" class="progress-input"> %\
-        <div style="margin-top:6px"><button class="edit-resourcing" data-id="${m.id}" data-category="${category}" data-quarter="${quarter}">Edit Resourcing</button></div>\
+      entry.innerHTML = `
+        <strong>${escapeHtml(m.title)}</strong><br>
+        <em>${escapeHtml(m.date || '')}</em><br>
+        Personnel: ${escapeHtml(m.people || '')}<br>
+        Progress:
+        <input type="number" min="0" max="100" value="${m.progress}"
+               data-id="${m.id}" data-quarter="${quarter}" data-category="${category}"
+               class="progress-input"> %
+        <div style="margin-top:6px">
+          <button class="edit-resourcing"
+                  data-id="${m.id}"
+                  data-category="${category}"
+                  data-quarter="${quarter}">
+            Edit Resourcing
+          </button>
+        </div>
       `;
       box.appendChild(entry);
     });
 
-    // attach click listeners for edit buttons
-// attach click listeners for edit buttons
-box.querySelectorAll('.edit-resourcing').forEach(btn => {
-  const handler = (e) => {
-    const id = btn.dataset.id; 
-    const cat = btn.dataset.category; 
-    const q = btn.dataset.quarter;
-    openMilestoneResourcingPopup(q, cat, id);
-  };
+    // ---------- Attach Edit Resourcing button handlers ----------
+    box.querySelectorAll('.edit-resourcing').forEach(btn => {
+      const handler = (e) => {
+        const id = btn.dataset.id;
+        const cat = btn.dataset.category;
+        const q = btn.dataset.quarter;
+        openMilestoneResourcingPopup(q, cat, id);
+      };
 
-  // remove old handler if any
-  btn.removeEventListener('click', btn._resListener);
+      // remove old handler
+      btn.removeEventListener('click', btn._resListener);
 
-  // save reference
-  btn._resListener = handler;
+      // store handler reference
+      btn._resListener = handler;
 
-  // CLICK FIX: stop propagation so popup doesn't instantly close
-  btn.addEventListener('click', (e) => {
-    e.stopPropagation();   // ← CRITICAL FIX
-    handler(e);
+      // FIX: prevent click from bubbling to the global popup-closer
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();   // <-- critical fix
+        handler(e);
+      });
+    });
   });
-});
-
 }
+
 
 // ------- Milestone resourcing parsing and computing -------
 function parseAllocations(raw) {
