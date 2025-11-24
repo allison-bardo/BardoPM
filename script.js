@@ -1,20 +1,24 @@
-/* script.js — Bardo PM Dashboard (updated for dynamic quarters)
-   - Auto-detects quarter keys from CSV / firestore / localStorage
-   - Removes Q1/Q4-only assumption
-   - Keeps previous behavior for milestones/resourcing/weekly/daily
+/* script.js — Bardo PM Dashboard
+   Firestore v8 (cdn) expected. HTML initializes firebase + var db = firebase.firestore();
+   Responsibilities:
+   - Load/save milestones (CSV import via PapaParse)
+   - Milestone resourcing (popup editor) -> compute quarterly resourcing
+   - Weekly tasks saved per ISO week (Monday start) + weekly history snapshot
+   - Weekly resourcing viewer (derived from weekly tasks) — independent of quarterly
+   - Daily updates (today/yesterday) saved to Firestore
+
+   NOTE: This file assumes PapaParse and firebase are loaded before this script
 */
 
 // ------- Constants & state -------
+let csvLoaded=false;
 const categories = ["Materials", "Fabrication", "Durability", "ScaleUp", "Operations"];
 const people = ["Allison","Christian","Cyril","Mike","Ryszard","SamL","SamW"];
 const STORAGE_KEYS = { MILESTONES: "milestonesData", WEEKLY: "weeklyPlans", DAILY: "dailyLogs", RESOURCING: "resourcingData_v1" };
-
-// now keyed by quarter strings (e.g., "Q425", "Q126")
-let csvLoaded = false;
-let milestonesData = loadFromStorage(STORAGE_KEYS.MILESTONES, {}) || {};
-let weeklyPlans = loadFromStorage(STORAGE_KEYS.WEEKLY, {}) || {};
-let dailyLogs = loadFromStorage(STORAGE_KEYS.DAILY, {}) || {};
-let quarterlyResourcing = loadFromStorage(STORAGE_KEYS.RESOURCING, {}) || {};
+let milestonesData = { Q1: {}, Q4: {} };
+let weeklyPlans = { Q1: {}, Q4: {} };
+let dailyLogs = {};
+let quarterlyResourcing = { Q1: {}, Q4: {} };
 
 // ------- Firestore helpers (v8) -------
 async function loadFS(path, fallback = {}) {
@@ -48,6 +52,7 @@ function getCurrentQuarter() {
 
 // ------- Week helper (Monday-start week key) -------
 function getWeekKeyForDate(d = new Date()) {
+  // compute ISO week with Monday start
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
   const dayNum = date.getUTCDay() || 7; // 1..7
   date.setUTCDate(date.getUTCDate() + 4 - dayNum);
@@ -56,111 +61,44 @@ function getWeekKeyForDate(d = new Date()) {
   return `${date.getUTCFullYear()}-W${String(weekNo).padStart(2,'0')}`;
 }
 
-// ------- Utility helpers -------
-function el(id) { return document.getElementById(id); }
-function escapeHtml(str) { if(!str) return ''; return String(str).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
-function throttle(fn, wait){ let last=0, scheduled=null; return function(...args){ const now=Date.now(); if(now-last>=wait){ last=now; fn.apply(this,args); } else { if(scheduled) clearTimeout(scheduled); scheduled=setTimeout(()=>{ last=Date.now(); fn.apply(this,args); scheduled=null; }, wait-(now-last)); } } }
-
-// ------- Quarter select population (auto-detect) -------
-function collectQuarterKeys() {
-  const keys = new Set();
-const QUARTER_REGEX = /^Q\d{3,4}$/;   // Q425 or Q126 or Q327
-
-function collectQuarterKeys() {
-  const keys = new Set();
-
-  const addFiltered = obj => {
-    Object.keys(obj || {}).forEach(k => {
-      if (QUARTER_REGEX.test(k)) keys.add(k);
-    });
-  };
-
-  addFiltered(milestonesData);
-  addFiltered(weeklyPlans);
-  addFiltered(quarterlyResourcing);
-
-  // fallback
-  if (keys.size === 0) {
-    ["Q425","Q126","Q226","Q326","Q426"].forEach(k => keys.add(k));
-  }
-
-  return Array.from(keys).sort();
-}
-
-  // fallback if none -> common quarters
-  if (keys.size === 0) {
-    ["Q425","Q126","Q226","Q326","Q426"].forEach(k => keys.add(k));
-  }
-  return Array.from(keys).sort();
-}
-
-function populateQuarterSelect(selected) {
-  const sel = el("quarter-select");
-  if (!sel) return;
-  const keys = collectQuarterKeys();
-  sel.innerHTML = "";
-  keys.forEach(k => {
-    const opt = document.createElement('option'); opt.value = k; opt.textContent = k;
-    sel.appendChild(opt);
-  });
-  if (selected && keys.includes(selected)) sel.value = selected;
-  else sel.value = keys[keys.length - 1];
-}
-
 // ------- Milestones CSV loader -------
-function loadMilestonesCSV(csvPath = 'milestones.csv') {
-  if (csvLoaded) return;   // <<< prevents duplicate import
-  csvLoaded = true;
-
-  Papa.parse(csvPath, {
-    download: true,
-    header: true,
-    skipEmptyLines: true,
+function loadMilestonesCSV(){
+  if(csvLoaded) return; csvLoaded=true;
+  if (typeof Papa === 'undefined') return;
+  Papa.parse('milestones.csv', {
+    download: true, header: true, skipEmptyLines: true,
     complete: async function(results) {
+      // reset
+      milestonesData = { Q1: {}, Q4: {} };
+      categories.forEach(c => { milestonesData.Q1[c] = []; milestonesData.Q4[c] = []; });
+
       results.data.forEach(row => {
-        const q = row.quarter?.trim();
-        const category = row.category?.trim();
-        if (!q || !category) return;
-        if (!categories.includes(category)) return;
-
-        if (!milestonesData[q]) {
-          milestonesData[q] = {};
-          categories.forEach(c => milestonesData[q][c] = []);
-        }
-
+        if (!categories.includes(row.category)) return;
         const milestone = {
-          id: row.id || `${row.title}-${Math.random().toString(36).slice(2)}`,
-          title: row.title || '',
+          id: row.id || `${row.title}-${Math.random().toString(36).slice(2,8)}`,
+          title: row.title || '(untitled)',
           date: row.date || '',
           people: row.people || '',
-          resourcing: row.resourcing || row.people || '',
+          resourcing: row.resourcing || row.people || '', // allow a dedicated resourcing field
           progress: parseInt(row.progress) || 0
         };
-
-        // 💥 Prevent duplicates
-        if (!milestonesData[q][category].some(m => m.id === milestone.id)) {
-          milestonesData[q][category].push(milestone);
-        }
+        if (row.quarter === 'Q1') milestonesData.Q1[row.category].push(milestone);
+        else milestonesData.Q4[row.category].push(milestone);
       });
 
+      // persist and render
+      try { await saveFS('dashboard/milestones', milestonesData); } catch(e){ /* ignore */ }
       saveToStorage(STORAGE_KEYS.MILESTONES, milestonesData);
+
+      // compute quarterly resourcing from milestones
       computeQuarterlyFromMilestones(getCurrentQuarter());
       renderQuarterlyOverview(getCurrentQuarter());
-      renderQuarterlyResourcing(getCurrentQuarter());
     }
   });
 }
 
-
-// ------- Render Milestones -------
+// ------- Render Milestones (with popup editor for milestone resourcing) -------
 function renderQuarterlyOverview(quarter) {
-  // ensure quarter structure exists
-  if (!milestonesData[quarter]) {
-    // fill with empty arrays
-    milestonesData[quarter] = {};
-    categories.forEach(c => milestonesData[quarter][c] = []);
-  }
-
   categories.forEach(category => {
     const box = document.querySelector(`#${category.toLowerCase()}-box .milestone-entries`);
     if (!box) return;
@@ -204,20 +142,9 @@ function parseAllocations(raw) {
   }
 }
 
-function ensureQuarterResourcing(quarter) {
-  if (!quarterlyResourcing[quarter]) quarterlyResourcing[quarter] = {};
-  categories.forEach(c => {
-    if (!quarterlyResourcing[quarter][c]) quarterlyResourcing[quarter][c] = {};
-    people.forEach(p => {
-      if (quarterlyResourcing[quarter][c][p] === undefined) quarterlyResourcing[quarter][c][p] = 0;
-    });
-  });
-}
-
 function computeQuarterlyFromMilestones(quarter) {
-  if (!milestonesData[quarter]) milestonesData[quarter] = {};
   if (!quarterlyResourcing[quarter]) quarterlyResourcing[quarter] = {};
-  categories.forEach(c => { if (!quarterlyResourcing[quarter][c]) quarterlyResourcing[quarter][c] = {}; people.forEach(p=> quarterlyResourcing[quarter][c][p]=quarterlyResourcing[quarter][c][p]||0); });
+  categories.forEach(c => { if (!quarterlyResourcing[quarter][c]) quarterlyResourcing[quarter][c] = {}; people.forEach(p=> quarterlyResourcing[quarter][c][p]=0); });
 
   categories.forEach(category => {
     const items = milestonesData[quarter]?.[category] || [];
@@ -231,17 +158,16 @@ function computeQuarterlyFromMilestones(quarter) {
     });
   });
 
-  // clamp and normalize
+  // clamp
   categories.forEach(category => { people.forEach(p => {
-    quarterlyResourcing[quarter][category][p] = Math.max(0,Math.min(100,Math.round(quarterlyResourcing[quarter][category][p] || 0)));
+    quarterlyResourcing[quarter][category][p] = Math.max(0,Math.min(100,Math.round(quarterlyResourcing[quarter][category][p])));
   }); });
 
   // persist
   try { saveFS('dashboard/resourcing', quarterlyResourcing); } catch(e){ }
-  saveToStorage(STORAGE_KEYS.RESOURCING, quarterlyResourcing);
 }
 
-// ------- Milestone resourcing popup -------
+// ------- Milestone resourcing popup (Option B) -------
 function openMilestoneResourcingPopup(quarter, category, milestoneId) {
   closeResourcingPopup();
   const mil = (milestonesData[quarter] && milestonesData[quarter][category]) ? milestonesData[quarter][category].find(x => x.id === milestoneId) : null;
@@ -249,9 +175,11 @@ function openMilestoneResourcingPopup(quarter, category, milestoneId) {
 
   const popup = document.createElement('div'); popup.className = 'res-edit-popup';
   let html = `<h4>Edit Resourcing — ${escapeHtml(mil.title)}</h4><div style="display:flex;flex-direction:column;gap:8px;">`;
+  categories.forEach((cat,i)=>{}); // keep lint
 
   // render inputs for people
   people.forEach(p => {
+    // find existing percent for person in mil.resourcing
     const allocs = parseAllocations(mil.resourcing || mil.people || '');
     const found = allocs.find(a=>a.person===p);
     const val = found ? found.percent : 0;
@@ -291,7 +219,7 @@ function openMilestoneResourcingPopup(quarter, category, milestoneId) {
     // write back into milestone.resourcing as semicolon separated
     mil.resourcing = updated.join(';');
 
-    // persist to Firestore & storage
+    // persist to Firestore: update milestones doc fully
     try {
       await saveFS('dashboard/milestones', milestonesData);
       saveToStorage(STORAGE_KEYS.MILESTONES, milestonesData);
@@ -307,77 +235,55 @@ function openMilestoneResourcingPopup(quarter, category, milestoneId) {
 
 function closeResourcingPopup(){ const old = document.querySelector('.res-edit-popup'); if (old) old.remove(); }
 
-// ------- Render quarterly resourcing grid -------
+// ------- Render quarterly resourcing grid (bars aggregated across categories per person in a row) -------
 function renderQuarterlyResourcing(quarter) {
+  const container = document.getElementById('resourcing-grid'); if (!container) return;
   ensureQuarterResourcing(quarter);
+  const data = quarterlyResourcing[quarter] || {};
 
-  const container = document.getElementById("resourcing-grid");
-  const data = quarterlyResourcing[quarter];
-
-  let html = `
-    <table class="quarterly-resourcing-table">
-      <thead>
-        <tr><th>Person</th><th>Quarterly Allocation</th></tr>
-      </thead>
-      <tbody>
-  `;
-
+  let html = '<table class="resourcing-table"><thead><tr><th>Person</th>' + categories.map(c=>`<th>${c}</th>`).join('') + '</tr></thead><tbody>';
   people.forEach(person => {
-    let segments = "";
-
-    categories.forEach((cat, i) => {
-      const val = data?.[cat]?.[person] || 0;
-      if (val > 0) {
-        segments += `
-          <div class="quarter-segment palette-${i+1}-bg"
-               data-person="${person}"
-               data-category="${cat}"
-               style="width:${val}%;">
-            ${val > 10 ? val + "%" : ""}
-          </div>
-        `;
-      }
+    html += `<tr><td style="text-align:left;padding-left:10px;font-weight:600">${person}</td>`;
+    categories.forEach((cat,i) => {
+      const val = data[cat] && data[cat][person] ? data[cat][person] : 0;
+      const paletteClass = `palette-${i+1}-bg`;
+      html += `<td class="res-cell"><div class="res-bar" style="width:100%;background:rgba(0,0,0,0.04);padding:2px;border-radius:6px;">`;
+      if (val>0) html += `<div class="res-bar-segment ${paletteClass}" data-person="${person}" data-category="${cat}" style="width:${val}%;height:22px;display:flex;align-items:center;justify-content:center;border-radius:6px;">${val}%</div>`;
+      else html += `<div class="res-bar-segment empty-segment" data-person="${person}" data-category="${cat}" style="width:100%;height:22px;background:#f2f2f2;color:#666;display:flex;align-items:center;justify-content:center;cursor:pointer">Set Resourcing</div>`;
+      html += `</div></td>`;
     });
-
-    if (!segments) {
-      segments = `<div class="quarter-segment empty" style="width:100%">0%</div>`;
-    }
-
-    html += `
-      <tr>
-        <td style="text-align:left;padding-left:10px;">${person}</td>
-        <td><div class="quarter-bar">${segments}</div></td>
-      </tr>
-    `;
+    html += '</tr>';
   });
-
-  html += "</tbody></table>";
+  html += '</tbody></table>';
   container.innerHTML = html;
 
-  // Clicking a segment opens the milestone resourcing editor
-  container.querySelectorAll(".quarter-segment").forEach(seg => {
-    seg.addEventListener("click", () => {
-      const cat = seg.dataset.category;
-      const q = getCurrentQuarter();
-      const firstMil = milestonesData[q]?.[cat]?.[0];
-      if (firstMil) openMilestoneResourcingPopup(q, cat, firstMil.id);
+  // click to edit any segment (open any milestone editor for that category) — choose first milestone in that category as entry point
+  container.querySelectorAll('.res-bar-segment, .empty-segment').forEach(seg => {
+    seg.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const person = seg.dataset.person; const category = seg.dataset.category; const quarterCur = getCurrentQuarter();
+      // open a general category-level popup to edit all milestones in that category? For now open popup for first milestone in that category
+      const firstMil = (milestonesData[quarterCur] && milestonesData[quarterCur][category] && milestonesData[quarterCur][category][0]);
+      if (firstMil) openMilestoneResourcingPopup(quarterCur, category, firstMil.id);
+      else alert('No milestones in this category to edit. Add a milestone first.');
     });
   });
 }
 
+function ensureQuarterResourcing(quarter) { if (!quarterlyResourcing[quarter]) quarterlyResourcing[quarter] = {}; categories.forEach(c=>{ if(!quarterlyResourcing[quarter][c]) quarterlyResourcing[quarter][c]={}; people.forEach(p=>{ if(quarterlyResourcing[quarter][c][p]===undefined) quarterlyResourcing[quarter][c][p]=0; }); }); }
 
 // ------- Weekly tasks and history (weekKey = Monday-start) -------
-weeklyPlans = loadFromStorage(STORAGE_KEYS.WEEKLY, weeklyPlans);
+weeklyPlans = loadFromStorage(STORAGE_KEYS.WEEKLY, { Q1:{}, Q4:{} });
 
 function loadWeeklyTasks(quarter, weekKey) {
   if (!weekKey) weekKey = getWeekKeyForDate(new Date());
   categories.forEach(category => {
     const list = document.querySelector(`#weekly-${category.toLowerCase()} .weekly-entries`);
     if (!list) return; list.innerHTML = '';
-    const tasks = (weeklyPlans[quarter] && weeklyPlans[quarter][weekKey] && weeklyPlans[quarter][weekKey][category]) ? weeklyPlans[quarter][weekKey][category] : [];
+    const tasks = weeklyPlans[quarter]?.[weekKey]?.[category] || [];
     tasks.forEach(task => {
       const li = document.createElement('li');
-      li.innerHTML = `<strong>${escapeHtml(task.title)}</strong> — ${escapeHtml(task.person)} (${task.percent}%)<ul style="margin:4px 0 0 14px;padding:0;">${(task.subtasks||[]).map(s=>`<li>${escapeHtml(s)}</li>`).join('')}</ul>`; 
+      li.innerHTML = `<strong>${escapeHtml(task.title)}</strong> — ${escapeHtml(task.person)} (${task.percent}%)<ul style="margin:4px 0 0 14px;padding:0;">${(task.subtasks||[]).map(s=>`<li>${escapeHtml(s)}</li>`).join('')}</ul>`;
       list.appendChild(li);
     });
   });
@@ -387,6 +293,7 @@ async function saveWeeklyAndSnapshot(quarter, weekKey) {
   try {
     await saveFS('dashboard/weeklyPlans', weeklyPlans);
   } catch(e){ console.warn('save weekly main failed', e); }
+  // snapshot under history/weeks doc field
   const historyPath = 'dashboard/history/weeks';
   const existing = await loadFS(historyPath, {});
   existing[weekKey] = { ts: Date.now(), quarter, data: weeklyPlans[quarter]?.[weekKey] || {} };
@@ -412,9 +319,7 @@ function initWeeklyTaskInputs() {
       const quarter = getCurrentQuarter(); const weekKey = getWeekKeyForDate(new Date());
       const title = titleInput.value.trim(); const subtasks = subtasksInput.value.trim(); const person = personInput.value; const percent = parseInt(percentInput.value)||0;
       if (!title) return; const taskObj = { title, subtasks: subtasks ? subtasks.split(';').map(s=>s.trim()):[], person, percent };
-      if (!weeklyPlans[quarter]) weeklyPlans[quarter]={};
-      if (!weeklyPlans[quarter][weekKey]) weeklyPlans[quarter][weekKey] = {};
-      if (!weeklyPlans[quarter][weekKey][category]) weeklyPlans[quarter][weekKey][category]=[];
+      if (!weeklyPlans[quarter]) weeklyPlans[quarter]={}; if (!weeklyPlans[quarter][weekKey]) weeklyPlans[quarter][weekKey] = {}; if (!weeklyPlans[quarter][weekKey][category]) weeklyPlans[quarter][weekKey][category]=[];
       weeklyPlans[quarter][weekKey][category].push(taskObj);
       saveToStorage(STORAGE_KEYS.WEEKLY, weeklyPlans);
       await saveWeeklyAndSnapshot(quarter, weekKey);
@@ -424,7 +329,7 @@ function initWeeklyTaskInputs() {
   });
 }
 
-// ------- Weekly resourcing UI -------
+// ------- Weekly resourcing UI (derived from weekly tasks, independent of quarterly) -------
 function renderWeeklyResourcing(quarter, weekKey) {
   if (!weekKey) weekKey = getWeekKeyForDate(new Date());
   const container = document.getElementById('weekly-resourcing-grid'); if (!container) return;
@@ -437,72 +342,50 @@ function renderWeeklyResourcing(quarter, weekKey) {
 // ------- Daily updates (persist to FS) -------
 function isoDate(offset=0){ const d=new Date(); d.setDate(d.getDate()+offset); return d.toISOString().slice(0,10); }
 
-dailyLogs = loadFromStorage(STORAGE_KEYS.DAILY, dailyLogs);
+dailyLogs = loadFromStorage(STORAGE_KEYS.DAILY, {});
 async function saveDailyLogsFS(){ try{ await saveFS('dashboard/dailyLogs', dailyLogs); } catch(e){ console.warn('daily save failed', e);} }
 
 function renderDailyBoxes(){ const container = document.getElementById('daily-row'); if(!container) return; container.innerHTML=''; const todayKey=isoDate(0); const yesterdayKey=isoDate(-1); if(!dailyLogs[todayKey]) dailyLogs[todayKey]={}; people.forEach(name=>{ const yesterdayUpdate = (dailyLogs[yesterdayKey] && dailyLogs[yesterdayKey][name]?.today) || ''; const todayUpdate = (dailyLogs[todayKey] && dailyLogs[todayKey][name]?.today) || ''; const box = document.createElement('div'); box.className='person-box'; box.innerHTML = ` <div class="person-header"><h4>${name}</h4><div class="muted small">${todayKey}</div></div><label>Yesterday's Update</label><div class="yesterday">${escapeHtml(yesterdayUpdate)}</div><label>Today's Update</label><textarea class="today" data-name="${name}" placeholder="Write today's update...">${escapeHtml(todayUpdate)}</textarea>`; container.appendChild(box); }); container.querySelectorAll('.today').forEach(el=>{ el.addEventListener('input', throttle(async (e)=>{ const name=e.target.dataset.name; const val=e.target.value; const tKey=isoDate(0); if(!dailyLogs[tKey]) dailyLogs[tKey]={}; if(!dailyLogs[tKey][name]) dailyLogs[tKey][name]={}; dailyLogs[tKey][name].today=val; saveToStorage(STORAGE_KEYS.DAILY, dailyLogs); await saveDailyLogsFS(); },600)); }); }
 
-// ------- Listeners & Progress save -------
-document.addEventListener('input', async (e)=>{ if(e.target.classList.contains('progress-input')){ const quarter=e.target.dataset.quarter; const category=e.target.dataset.category; const id=e.target.dataset.id; const newValue=parseInt(e.target.value)||0; const items = (milestonesData[quarter] && milestonesData[quarter][category]) ? milestonesData[quarter][category] : []; const item = items.find(x=>x.id===id); if(item){ item.progress = newValue; saveToStorage(STORAGE_KEYS.MILESTONES, milestonesData); try{ await saveFS('dashboard/milestones', milestonesData); } catch(e){} } } });
+// ------- Utility & listeners -------
+function escapeHtml(str){ if(!str) return ''; return String(str).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+function throttle(fn, wait){ let last=0, scheduled=null; return function(...args){ const now=Date.now(); if(now-last>=wait){ last=now; fn.apply(this,args); } else { if(scheduled) clearTimeout(scheduled); scheduled=setTimeout(()=>{ last=Date.now(); fn.apply(this,args); scheduled=null; }, wait-(now-last)); } } }
+
+// milestone progress input listener
+document.addEventListener('input', async (e)=>{ if(e.target.classList.contains('progress-input')){ const quarter=e.target.dataset.quarter; const category=e.target.dataset.category; const id=e.target.dataset.id; const newValue=parseInt(e.target.value)||0; const items = milestonesData[quarter]?.[category] || []; const item = items.find(x=>x.id===id); if(item){ item.progress = newValue; saveToStorage(STORAGE_KEYS.MILESTONES, milestonesData); try{ await saveFS('dashboard/milestones', milestonesData); } catch(e){} } } });
 
 // quarter switch
-const quarterSelect = document.getElementById('quarter-select');
-if (quarterSelect) {
-  quarterSelect.addEventListener('change', async ()=> {
-    const q = getCurrentQuarter();
-    // hydrate specific quarter from FS (if present)
-    try {
-      const ms = await loadFS('dashboard/milestones', {});
-      if (ms && ms[q]) { milestonesData[q] = ms[q]; saveToStorage(STORAGE_KEYS.MILESTONES, milestonesData); }
-    } catch(e){}
-    try {
-      const wp = await loadFS('dashboard/weeklyPlans', {});
-      if (wp && wp[q]) { weeklyPlans[q] = wp[q]; saveToStorage(STORAGE_KEYS.WEEKLY, weeklyPlans); }
-    } catch(e){}
-    try {
-      const rs = await loadFS('dashboard/resourcing', {});
-      if (rs && rs[q]) { quarterlyResourcing[q] = rs[q]; saveToStorage(STORAGE_KEYS.RESOURCING, quarterlyResourcing); }
-    } catch(e){}
-    renderQuarterlyOverview(q); renderQuarterlyResourcing(q); loadWeeklyTasks(q); renderWeeklyResourcing(q); renderDailyBoxes();
-  });
-}
+const quarterSelect = document.getElementById('quarter-select'); if(quarterSelect) quarterSelect.addEventListener('change', async ()=>{ const q = getCurrentQuarter(); // hydrate FS for freshness
+  try{ const fsMilestones = await loadFS('dashboard/milestones', {Q1:{},Q4:{}}); if(fsMilestones && fsMilestones[q]) milestonesData[q] = fsMilestones[q]; }catch(e){}
+  try{ const fsWeekly = await loadFS('dashboard/weeklyPlans', {Q1:{},Q4:{}}); if(fsWeekly && fsWeekly[q]) weeklyPlans[q]=fsWeekly[q]; }catch(e){}
+  try{ const fsRes = await loadFS('dashboard/resourcing', {Q1:{},Q4:{}}); if(fsRes && fsRes[q]) quarterlyResourcing[q]=fsRes[q]; }catch(e){}
+  renderQuarterlyOverview(q); renderQuarterlyResourcing(q); loadWeeklyTasks(q); renderWeeklyResourcing(q); renderDailyBoxes(); });
 
-// close popup on global click
+// global click to close popups
 document.addEventListener('click',(e)=>{ if(e.target.closest('.res-edit-popup')) return; closeResourcingPopup(); });
 
-// ------- Initialization IIFE -------e
+// ------- Initialization IIFE -------
 (async function initializeDashboard(){
-  // hydrate from FS (best-effort) into our dynamic structures
- 
-  try{
-    const wp = await loadFS('dashboard/weeklyPlans', {});
-    if(wp && Object.keys(wp).length) { weeklyPlans = Object.assign({}, wp, weeklyPlans); saveToStorage(STORAGE_KEYS.WEEKLY, weeklyPlans); }
-  } catch(e){}
-  try{
-    const dl = await loadFS('dashboard/dailyLogs', {});
-    if(dl && Object.keys(dl).length) { dailyLogs = Object.assign({}, dl, dailyLogs); saveToStorage(STORAGE_KEYS.DAILY, dailyLogs); }
-  } catch(e){}
-  try{
-    const rs = await loadFS('dashboard/resourcing', {});
-    if(rs && Object.keys(rs).length) { quarterlyResourcing = Object.assign({}, rs, quarterlyResourcing); saveToStorage(STORAGE_KEYS.RESOURCING, quarterlyResourcing); }
-  } catch(e){}
+  // load local caches first
+  try{ milestonesData = loadFromStorage(STORAGE_KEYS.MILESTONES, milestonesData) || milestonesData; weeklyPlans = loadFromStorage(STORAGE_KEYS.WEEKLY, weeklyPlans) || weeklyPlans; dailyLogs = loadFromStorage(STORAGE_KEYS.DAILY, dailyLogs) || dailyLogs; quarterlyResourcing = loadFromStorage(STORAGE_KEYS.RESOURCING, quarterlyResourcing) || quarterlyResourcing; }catch(e){}
 
-  // populate select from combined data
-  populateQuarterSelect();
+  // attempt to hydrate from Firestore (best-effort)
+  (async ()=>{
+    try{ const wp = await loadFS('dashboard/weeklyPlans',{Q1:{},Q4:{}}); if(wp && Object.keys(wp).length){ weeklyPlans = wp; saveToStorage(STORAGE_KEYS.WEEKLY, weeklyPlans); } }catch(e){}
+    try{ const dl = await loadFS('dashboard/dailyLogs',{}); if(dl && Object.keys(dl).length){ dailyLogs = dl; saveToStorage(STORAGE_KEYS.DAILY, dailyLogs); } }catch(e){}
+    try{ const rs = await loadFS('dashboard/resourcing',{Q1:{},Q4:{}}); if(rs && Object.keys(rs).length){ quarterlyResourcing = rs; saveToStorage(STORAGE_KEYS.RESOURCING, quarterlyResourcing); } }catch(e){}
 
-  // initial quarter
-  const q = getCurrentQuarter();
+    // compute quarterly from milestones if present
+    try{ computeQuarterlyFromMilestones(getCurrentQuarter()); }catch(e){}
 
-  // render initial
-  renderQuarterlyOverview(q);
-  renderQuarterlyResourcing(q);
-  loadWeeklyTasks(q);
-  renderWeeklyResourcing(q);
-  initWeeklyTaskInputs();
-  renderDailyBoxes();
+    const q = getCurrentQuarter(); renderQuarterlyOverview(q); renderQuarterlyResourcing(q); loadWeeklyTasks(q); renderWeeklyResourcing(q); initWeeklyTaskInputs(); renderDailyBoxes();
+  })();
 
-  // optional CSV import (will merge quarters and refresh select/render)
-  loadMilestonesCSV('milestones.csv');
+  // immediate render for snappiness
+  const q = getCurrentQuarter(); renderQuarterlyOverview(q); renderQuarterlyResourcing(q); loadWeeklyTasks(q); renderWeeklyResourcing(q); initWeeklyTaskInputs(); renderDailyBoxes();
+
+  // optional CSV import
+  loadMilestonesCSV();
+
 })();
-
 
