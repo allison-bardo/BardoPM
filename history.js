@@ -246,6 +246,5 @@ async function loadDailyHistory(quarter) {
   out.innerHTML = html || "No daily logs.";
 }
 
-// (Removed erroneous leftover fragment)(date => {
-    html += `<h3>${date}</h3><ul>`;
-    Object.keys(logs[date]).
+// (Removed erroneous leftover fragment)
+// File now ends cleanly.
